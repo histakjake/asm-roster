@@ -93,12 +93,22 @@ wrangler secret put DRIVE_FOLDER_ID
 
 1. Open your Google Sheet
 2. Extensions → Apps Script
-3. Replace `Code.gs` with the provided `Code.gs` file
-4. Run `setupColumns()` once to add new columns
-5. Deploy → New Deployment → Web App
+3. Replace `Code.gs` with the `Code.gs` file from this repo
+4. Run `setupColumns()` once to create/update sheet headers
+5. **First-time deploy:** Deploy → New Deployment → Web App
    - Execute as: **Me**
    - Who has access: **Anyone**
-6. Copy the URL → paste as `GOOGLE_SCRIPT_URL` secret
+   - Copy the URL → paste as `GOOGLE_SCRIPT_URL` secret
+6. **After any code change:** Deploy → **Manage Deployments** → click the
+   pencil icon on your existing deployment → set Version to **"New version"**
+   → Deploy. **Do NOT create a new deployment** (that changes the URL).
+
+> **Stale-deployment bug:** Google Apps Script web apps are pinned to a
+> specific saved version. If you edit the script but only hit Save (not
+> redeploy), the live web app keeps running the old code. This is why photos
+> may appear to come from the wrong column — the deployed version had
+> `COL.photoUrl` pointing at column K (11) instead of column B (2). Always
+> redeploy after editing `Code.gs`.
 
 ---
 
