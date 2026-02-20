@@ -126,8 +126,8 @@ async function refreshCurrentUser() {
 function updateNav() {
   const buildRight = () => {
     if (!currentUser) {
-      return '<button class="nav-btn" onclick="openAuthModal(\'signup\')">Sign Up</button>' +
-             '<button class="nav-btn primary" onclick="openAuthModal(\'login\')">Log In</button>';
+      return '<button class="nav-btn" onclick="openAuthModal(\\'signup\\')">Sign Up</button>' +
+             '<button class="nav-btn primary" onclick="openAuthModal(\\'login\\')">Log In</button>';
     }
     const adminBtn = currentUser.role==='admin'
       ? '<button class="nav-btn" onclick="loadAdminPanel()">Admin</button>' : '';
@@ -226,12 +226,12 @@ function makeCard(person, idx, sk, section) {
     : (person.primaryGoal ? '<div class="goal-primary">🎯 '+person.primaryGoal.slice(0,40)+'</div>' : '');
 
   const editBtn = canEdit
-    ? '<button class="card-edit-btn" onclick="event.stopPropagation();openEditModal(\''+sk+'\',\''+section+'\','+idx+')" title="Edit">✏️</button>'
+    ? '<button class="card-edit-btn" onclick="event.stopPropagation();openEditModal(\\''+sk+'\\',\\''+section+'\\','+idx+')" title="Edit">✏️</button>'
     : '';
 
   card.innerHTML = editBtn +
     '<div class="card-avatar"><div class="av-fallback" style="background:'+g+'">'+initials(person.name)+'</div>'+
-    (thumb ? '<img src="'+thumb+'" alt="" loading="lazy" onload="this.classList.add(\'loaded\')" onerror="this.style.display=\'none\'">' : '')+
+    (thumb ? '<img src="'+thumb+'" alt="" loading="lazy" onload="this.classList.add(\\'loaded\\')" onerror="this.style.display=\\'none\\'">' : '')+
     '</div><div class="card-name-row"><div class="card-name">'+person.name+'</div>'+
     (person.grade ? '<span class="badge-grade">Gr.'+person.grade+'</span>' : '')+'</div>'+
     (meta ? '<div class="card-meta">'+meta+'</div>' : '')+
@@ -486,16 +486,16 @@ async function renderStudentDetail(sk, section, index) {
   ].filter(Boolean).map(c=>'<div class="chip">'+c+'</div>').join('');
 
   const editBtn = canEdit
-    ? '<button class="nav-btn primary edit-gated" onclick="openEditModal(\''+sk+'\',\''+section+'\','+index+')">Edit</button>'
+    ? '<button class="nav-btn primary edit-gated" onclick="openEditModal(\\''+sk+'\\',\\''+section+'\\','+index+')">Edit</button>'
     : '';
   const logBtn = canEdit
-    ? '<button class="nav-btn" onclick="openInteractionModal(\''+sk+'\',\''+section+'\','+index+',\''+person.name+'\')">+ Log Hangout</button>'
+    ? '<button class="nav-btn" onclick="openInteractionModal(\\''+sk+'\\',\\''+section+'\\','+index+',\\''+person.name+'\\')">+ Log Hangout</button>'
     : '';
 
   el.innerHTML =
     '<div class="student-hero">'+
       '<div class="student-avatar-lg"><div class="av-fallback" style="background:'+g+'">'+initials(person.name)+'</div>'+
-      (thumb?'<img src="'+thumb+'" alt="" onload="this.classList.add(\'loaded\')" onerror="this.style.display=\'none\'">':'')+
+      (thumb?'<img src="'+thumb+'" alt="" onload="this.classList.add(\\'loaded\\')" onerror="this.style.display=\\'none\\'">':'')+
       '</div>'+
       '<div class="student-info">'+
         '<div class="student-name">'+person.name+'</div>'+
@@ -644,11 +644,11 @@ async function loadActivityFeed() {
       const student=findStudent(item.studentName);
       const sThumb=student?driveThumb(student.photoUrl):null;
       const sg=GRADIENTS[0], lg=GRADIENTS[2];
-      return '<div class="act-card" onclick="navigateToStudent(\''+item.studentName+'\')">'+
+      return '<div class="act-card" onclick="navigateToStudent(\\''+item.studentName+'\\')">'+
         '<div class="act-header">'+
           '<div class="act-avatars">'+
             '<div class="act-av"><div class="av-fallback" style="background:'+sg+'">'+initials(item.studentName)+'</div>'+
-            (sThumb?'<img src="'+sThumb+'" onload="this.classList.add(\'loaded\')" onerror="this.style.display=\'none\'">':'')+
+            (sThumb?'<img src="'+sThumb+'" onload="this.classList.add(\\'loaded\\')" onerror="this.style.display=\\'none\\'">':'')+
             '</div>'+
             '<div class="act-av"><div class="av-fallback" style="background:'+lg+'">'+initials(item.leader)+'</div></div>'+
           '</div>'+
@@ -756,13 +756,13 @@ async function loadAdminUsers() {
   if (!users.length) { el.innerHTML='<div class="empty"><p>No users.</p></div>'; return; }
   el.innerHTML='<table class="user-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead><tbody>'+
     users.map(u=>'<tr><td>'+u.name+'</td><td style="color:var(--muted)">'+u.email+'</td><td><span class="role-badge '+u.role+'">'+u.role+'</span></td>'+
-      '<td style="color:var(--muted);font-family:\'JetBrains Mono\',monospace;font-size:11px">'+(u.createdAt?new Date(u.createdAt).toLocaleDateString():'—')+'</td>'+
+      '<td style="color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;font-size:11px">'+(u.createdAt?new Date(u.createdAt).toLocaleDateString():'—')+'</td>'+
       '<td><div class="btn-row">'+
-        (u.role==='pending'  ?'<button class="role-btn approve" onclick="updateUser(\''+u.email+'\',\'approved\')">Approve</button>':'')+
-        (u.role==='approved' ?'<button class="role-btn mk-leader" onclick="updateUser(\''+u.email+'\',\'leader\')">→ Leader</button>':'')+
-        (u.role==='leader'   ?'<button class="role-btn revoke" onclick="updateUser(\''+u.email+'\',\'approved\')">Remove Leader</button>':'')+
-        (u.role!=='admin'    ?'<button class="role-btn mk-admin" onclick="updateUser(\''+u.email+'\',\'admin\')">→ Admin</button>':'')+
-        (u.role!=='pending'  ?'<button class="role-btn revoke" onclick="updateUser(\''+u.email+'\',\'pending\')">Revoke</button>':'')+
+        (u.role==='pending'  ?'<button class="role-btn approve" onclick="updateUser(\\''+u.email+'\\',\\'approved\\')">Approve</button>':'')+
+        (u.role==='approved' ?'<button class="role-btn mk-leader" onclick="updateUser(\\''+u.email+'\\',\\'leader\\')">→ Leader</button>':'')+
+        (u.role==='leader'   ?'<button class="role-btn revoke" onclick="updateUser(\\''+u.email+'\\',\\'approved\\')">Remove Leader</button>':'')+
+        (u.role!=='admin'    ?'<button class="role-btn mk-admin" onclick="updateUser(\\''+u.email+'\\',\\'admin\\')">→ Admin</button>':'')+
+        (u.role!=='pending'  ?'<button class="role-btn revoke" onclick="updateUser(\\''+u.email+'\\',\\'pending\\')">Revoke</button>':'')+
       '</div></td></tr>'
     ).join('')+'</tbody></table>';
 }
