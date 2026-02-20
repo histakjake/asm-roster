@@ -5,8 +5,6 @@
 
 // ── COLUMN MAP ──────────────────────────────────────────────────────────────
 // IMPORTANT: these must match the actual Google Sheet column order.
-// If photos stop loading, a stale deployment with wrong COL values is the
-// first thing to check (old code had photoUrl at 11 = column K).
 const COL = {
   name:                    1,  // A
   photoUrl:                2,  // B  ← photo link lives here
@@ -23,6 +21,7 @@ const COL = {
   lastLeader:             13,  // M  (written by addInteraction)
   interactionCount:       14,  // N  (written by addInteraction)
   section:                15,  // O  "core" | "loose" | "fringe"
+  interactionLog:         16,  // P  JSON array of all hangout entries
 };
 
 // Sheet tabs must be named exactly "High School" and "Middle School".
@@ -43,12 +42,14 @@ function doGet(e) {
     const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
 
     let result;
-    if      (action === 'read')           result = readRoster();
-    else if (action === 'add')            result = addRow(payload);
-    else if (action === 'update')         result = updateRow(payload);
-    else if (action === 'delete')         result = deleteRow(payload);
-    else if (action === 'addInteraction') result = addInteraction(payload);
-    else                                   result = { error: 'Unknown action: ' + action };
+    if      (action === 'read')               result = readRoster();
+    else if (action === 'add')                result = addRow(payload);
+    else if (action === 'update')             result = updateRow(payload);
+    else if (action === 'delete')             result = deleteRow(payload);
+    else if (action === 'addInteraction')     result = addInteraction(payload);
+    else if (action === 'updateInteraction')  result = updateInteractionEntry(payload);
+    else if (action === 'deleteInteraction')  result = deleteInteractionEntry(payload);
+    else                                       result = { error: 'Unknown action: ' + action };
 
     return json(result);
   } catch (err) {
@@ -83,12 +84,13 @@ function readRoster() {
     ms: { core: [], loose: [], fringe: [] },
   };
 
-  Object.entries(SHEETS).forEach(([sk, sheetName]) => {
+  Object.entries(SHEETS).forEach(function(entry) {
+    var sk = entry[0], sheetName = entry[1];
     const sheet = ss.getSheetByName(sheetName);
     if (!sheet) return;
 
     const rows = sheet.getDataRange().getValues();
-    rows.forEach((row, i) => {
+    rows.forEach(function(row, i) {
       if (i === 0) return;                   // skip header row
       if (!row[COL.name - 1]) return;        // skip blank rows
 
@@ -100,7 +102,7 @@ function readRoster() {
 
       result[sk][section].push({
         name:     row[COL.name     - 1],
-        photoUrl: row[COL.photoUrl - 1],     // ← reads column B
+        photoUrl: row[COL.photoUrl - 1],
         connected: row[COL.connected - 1] === 'Family Connected',
         date:     row[COL.date     - 1],
         notes:    row[COL.notes    - 1],
@@ -124,19 +126,20 @@ function addRow(payload) {
   const sheetObj = getSheet(sk);
   if (!sheetObj) return { error: 'Sheet not found: ' + sk };
 
-  const row = new Array(COL.section).fill('');
-  row[COL.name     - 1] = person.name        || '';
-  row[COL.photoUrl - 1] = person.photoUrl    || '';  // ← writes column B
-  row[COL.connected - 1] = person.connected  ? 'Family Connected' : 'Not Connected';
-  row[COL.date      - 1] = person.date       || '';
-  row[COL.notes     - 1] = person.notes      || '';
-  row[COL.grade     - 1] = person.grade      || '';
-  row[COL.school    - 1] = person.school     || '';
-  row[COL.birthday  - 1] = person.birthday   || '';
-  row[COL.interest  - 1] = person.interest   || '';
-  row[COL.primaryGoal - 1] = person.primaryGoal || '';
-  row[COL.goals     - 1] = JSON.stringify(person.goals || []);
-  row[COL.section   - 1] = section           || 'core';
+  const row = new Array(COL.interactionLog).fill('');
+  row[COL.name        - 1] = person.name           || '';
+  row[COL.photoUrl    - 1] = person.photoUrl        || '';
+  row[COL.connected   - 1] = person.connected ? 'Family Connected' : 'Not Connected';
+  row[COL.date        - 1] = person.date            || '';
+  row[COL.notes       - 1] = person.notes           || '';
+  row[COL.grade       - 1] = person.grade           || '';
+  row[COL.school      - 1] = person.school          || '';
+  row[COL.birthday    - 1] = person.birthday        || '';
+  row[COL.interest    - 1] = person.interest        || '';
+  row[COL.primaryGoal - 1] = person.primaryGoal     || '';
+  row[COL.goals       - 1] = JSON.stringify(person.goals || []);
+  row[COL.section     - 1] = section                || 'core';
+  row[COL.interactionLog - 1] = '[]';
 
   sheetObj.appendRow(row);
   return { success: true, newRowIndex: sheetObj.getLastRow() };
@@ -150,7 +153,7 @@ function updateRow(payload) {
 
   const colMap = {
     name:        COL.name,
-    photoUrl:    COL.photoUrl,     // ← maps to column B
+    photoUrl:    COL.photoUrl,
     connected:   COL.connected,
     date:        COL.date,
     notes:       COL.notes,
@@ -163,7 +166,8 @@ function updateRow(payload) {
     section:     COL.section,
   };
 
-  Object.entries(fields).forEach(([key, value]) => {
+  Object.entries(fields).forEach(function(entry) {
+    var key = entry[0], value = entry[1];
     const col = colMap[key];
     if (!col) return;
 
@@ -193,12 +197,62 @@ function addInteraction(payload) {
   const sheetObj = getSheet(sk);
   if (!sheetObj) return { error: 'Sheet not found: ' + sk };
 
+  // Update summary columns (L, M, D, N)
   sheetObj.getRange(rowIndex, COL.lastInteractionSummary).setValue(interaction.summary || '');
   sheetObj.getRange(rowIndex, COL.lastLeader).setValue(interaction.leader || '');
   if (interaction.date) sheetObj.getRange(rowIndex, COL.date).setValue(interaction.date);
-
   const prev = parseInt(sheetObj.getRange(rowIndex, COL.interactionCount).getValue()) || 0;
   sheetObj.getRange(rowIndex, COL.interactionCount).setValue(prev + 1);
+
+  // Append to full hangout log in column P
+  let log = [];
+  try { log = JSON.parse(sheetObj.getRange(rowIndex, COL.interactionLog).getValue() || '[]'); } catch (_) {}
+  log.push(interaction);
+  sheetObj.getRange(rowIndex, COL.interactionLog).setValue(JSON.stringify(log));
+
+  return { success: true };
+}
+
+// ── UPDATE INTERACTION ENTRY ──────────────────────────────────────────────────
+function updateInteractionEntry(payload) {
+  const { sheet: sk, rowIndex, interactionId, changes } = payload;
+  const sheetObj = getSheet(sk);
+  if (!sheetObj) return { error: 'Sheet not found: ' + sk };
+
+  let log = [];
+  try { log = JSON.parse(sheetObj.getRange(rowIndex, COL.interactionLog).getValue() || '[]'); } catch (_) {}
+
+  const idx = log.findIndex(function(n) { return n.id === interactionId; });
+  if (idx < 0) return { error: 'Interaction not found' };
+
+  log[idx] = Object.assign({}, log[idx], changes, { updatedAt: new Date().toISOString() });
+
+  // Keep lastInteractionSummary in sync if this was the most recent entry
+  if (log[log.length - 1] && log[log.length - 1].id === interactionId) {
+    sheetObj.getRange(rowIndex, COL.lastInteractionSummary).setValue(changes.summary || log[idx].summary || '');
+  }
+
+  sheetObj.getRange(rowIndex, COL.interactionLog).setValue(JSON.stringify(log));
+  return { success: true };
+}
+
+// ── DELETE INTERACTION ENTRY ──────────────────────────────────────────────────
+function deleteInteractionEntry(payload) {
+  const { sheet: sk, rowIndex, interactionId } = payload;
+  const sheetObj = getSheet(sk);
+  if (!sheetObj) return { error: 'Sheet not found: ' + sk };
+
+  let log = [];
+  try { log = JSON.parse(sheetObj.getRange(rowIndex, COL.interactionLog).getValue() || '[]'); } catch (_) {}
+
+  const filtered = log.filter(function(n) { return n.id !== interactionId; });
+  sheetObj.getRange(rowIndex, COL.interactionLog).setValue(JSON.stringify(filtered));
+
+  // Keep summary columns in sync with the new most-recent entry
+  const last = filtered[filtered.length - 1];
+  sheetObj.getRange(rowIndex, COL.lastInteractionSummary).setValue(last ? last.summary || '' : '');
+  sheetObj.getRange(rowIndex, COL.lastLeader).setValue(last ? last.leader || '' : '');
+  sheetObj.getRange(rowIndex, COL.interactionCount).setValue(filtered.length);
 
   return { success: true };
 }
@@ -218,24 +272,24 @@ function uploadPhoto(body) {
 }
 
 // ── SETUP (run once after pasting this file) ──────────────────────────────────
-// Opens the sheet, creates "HS" and "MS" tabs if missing, writes headers.
+// Opens the sheet, ensures "High School" and "Middle School" tabs exist, writes headers.
 function setupColumns() {
   const ss      = SpreadsheetApp.getActiveSpreadsheet();
   const headers = [
     'Student', 'Link to Photo', 'Connected This Quarter', 'DATE', 'Notes',
     'Grade', 'School', 'Birthday', 'Group, Sport', 'Primary Goal',
     'Goals (JSON)', 'Last Interaction Summary', 'Last Leader',
-    'Interaction Count', 'Section',
+    'Interaction Count', 'Section', 'Hangout Log (JSON)',
   ];
 
-  Object.values(SHEETS).forEach(name => {
+  Object.values(SHEETS).forEach(function(name) {
     let sheet = ss.getSheetByName(name);
     if (!sheet) sheet = ss.insertSheet(name);
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     sheet.setFrozenRows(1);
   });
 
-  SpreadsheetApp.getUi().alert('Sheets ready! HS and MS tabs created/updated.');
+  SpreadsheetApp.getUi().alert('Sheets ready! High School and Middle School tabs created/updated.');
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────

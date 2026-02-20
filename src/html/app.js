@@ -735,7 +735,8 @@ async function saveInteraction() {
 function openEditInteractionModal(intId, sk, section, index) {
   const int = currentInteractions.find(n => n.id === intId);
   if (!int) return;
-  editInteractionContext = { int, sk, section, index };
+  const rowIndex = (DATA[sk]?.[section]?.[index] || {}).rowIndex;
+  editInteractionContext = { int, sk, section, index, rowIndex };
   sv('edit-int-date', int.date || '');
   sv('edit-int-summary', int.summary || '');
   openModal('edit-interaction-modal');
@@ -743,13 +744,13 @@ function openEditInteractionModal(intId, sk, section, index) {
 
 async function saveEditedInteraction() {
   if (!editInteractionContext) return;
-  const { int, sk, section, index } = editInteractionContext;
+  const { int, sk, section, index, rowIndex } = editInteractionContext;
   const date = v('edit-int-date');
   const summary = v('edit-int-summary');
   if (!summary) { showToast('Summary cannot be empty', 'error'); return; }
   const res = await fetch('/api/student/interactions', {
     method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sk, section, index, interactionId: int.id, changes: { date, summary } }),
+    body: JSON.stringify({ sk, section, index, rowIndex, interactionId: int.id, changes: { date, summary } }),
   });
   const data = await res.json();
   if (data.success) {
@@ -760,16 +761,17 @@ async function saveEditedInteraction() {
 }
 
 function deleteInteractionNote(id, sk, section, index) {
-  pendingDeleteInteraction = { id, sk, section, index };
+  const rowIndex = (DATA[sk]?.[section]?.[index] || {}).rowIndex;
+  pendingDeleteInteraction = { id, sk, section, index, rowIndex };
   openModal('confirm-delete-modal');
 }
 
 async function confirmDeleteInteraction() {
   if (!pendingDeleteInteraction) return;
-  const { id, sk, section, index } = pendingDeleteInteraction;
+  const { id, sk, section, index, rowIndex } = pendingDeleteInteraction;
   const res = await fetch('/api/student/interactions', {
     method: 'DELETE', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ sk, section, index, interactionId: id }),
+    body: JSON.stringify({ sk, section, index, rowIndex, interactionId: id }),
   });
   const data = await res.json();
   if (data.success) {
