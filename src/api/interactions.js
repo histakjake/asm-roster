@@ -62,7 +62,7 @@ async function updateInteraction(request, env) {
   }
 
   const body = await request.json();
-  const { sk, section, index, interactionId, changes } = body;
+  const { sk, section, index, interactionId, changes, rowIndex } = body;
 
   const kvKey = `interactions:${sk}:${section}:${index}`;
   const existing = (await env.ASM_KV.get(kvKey, { type: 'json' })) || [];
@@ -80,6 +80,17 @@ async function updateInteraction(request, env) {
   existing[noteIndex] = { ...note, ...changes, updatedAt: new Date().toISOString() };
   await env.ASM_KV.put(kvKey, JSON.stringify(existing));
 
+  // Sync update to Google Sheet (fire and forget)
+  if (env.GOOGLE_SCRIPT_URL && rowIndex !== undefined) {
+    try {
+      const params = new URLSearchParams({
+        action: 'updateInteraction',
+        payload: JSON.stringify({ sheet: sk, rowIndex, interactionId, changes }),
+      });
+      fetch(env.GOOGLE_SCRIPT_URL + '?' + params).catch(() => {});
+    } catch (_) {}
+  }
+
   return jsonResp({ success: true });
 }
 
@@ -90,7 +101,7 @@ async function deleteInteraction(request, env) {
   }
 
   const body = await request.json();
-  const { sk, section, index, interactionId } = body;
+  const { sk, section, index, interactionId, rowIndex } = body;
 
   const kvKey = `interactions:${sk}:${section}:${index}`;
   const existing = (await env.ASM_KV.get(kvKey, { type: 'json' })) || [];
@@ -105,6 +116,17 @@ async function deleteInteraction(request, env) {
 
   const updated = existing.filter(n => n.id !== interactionId);
   await env.ASM_KV.put(kvKey, JSON.stringify(updated));
+
+  // Sync deletion to Google Sheet (fire and forget)
+  if (env.GOOGLE_SCRIPT_URL && rowIndex !== undefined) {
+    try {
+      const params = new URLSearchParams({
+        action: 'deleteInteraction',
+        payload: JSON.stringify({ sheet: sk, rowIndex, interactionId }),
+      });
+      fetch(env.GOOGLE_SCRIPT_URL + '?' + params).catch(() => {});
+    } catch (_) {}
+  }
 
   return jsonResp({ success: true });
 }
