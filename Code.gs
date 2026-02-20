@@ -25,8 +25,8 @@ const COL = {
   section:                15,  // O  "core" | "loose" | "fringe"
 };
 
-// Sheet tabs must be named exactly "HS" and "MS".
-const SHEETS = { hs: 'HS', ms: 'MS' };
+// Sheet tabs must be named exactly "High School" and "Middle School".
+const SHEETS = { hs: 'High School', ms: 'Middle School' };
 
 // ── ENTRY POINTS ─────────────────────────────────────────────────────────────
 function doGet(e) {
