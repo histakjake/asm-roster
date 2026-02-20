@@ -19,7 +19,7 @@ export async function handleUpload(request, env) {
     const res = await fetch(env.GOOGLE_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'uploadPhoto', fileName, mimeType, base64, folderId }),
+      body: JSON.stringify({ action: 'uploadPhoto', fileName, mimeType, base64, folderId, _s: env.GAS_SHARED_SECRET || '' }),
     });
     const data = await res.json();
 

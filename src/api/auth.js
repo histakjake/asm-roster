@@ -6,13 +6,56 @@ import {
 const SESSION_TTL = 30 * 24 * 60 * 60; // 30 days in seconds
 
 export async function handleAuth(request, env, pathname, method) {
-  if (pathname === '/api/auth/check-password' && method === 'POST') return checkPassword(request, env);
+  if (pathname === '/api/auth/passcode'        && method === 'POST') return passcodeLogin(request, env);
+  if (pathname === '/api/auth/check-password'  && method === 'POST') return checkPassword(request, env);
   if (pathname === '/api/auth/signup'          && method === 'POST') return signup(request, env);
   if (pathname === '/api/auth/login'           && method === 'POST') return login(request, env);
   if (pathname === '/api/auth/logout'          && method === 'POST') return logout(request, env);
   if (pathname === '/api/me'                   && method === 'GET')  return me(request, env);
   if (pathname === '/api/profile/update'       && method === 'POST') return profileUpdate(request, env);
   return jsonResp({ error: 'Not found' }, 404);
+}
+
+// ── Lane A: time-limited passcode session (view-only) ────────
+async function passcodeLogin(request, env) {
+  let passcode = '';
+  try { ({ passcode = '' } = await request.json()); } catch (_) {}
+  const correct = env.SITE_PASSWORD || '';
+  if (!correct || !passcode) return jsonResp({ error: 'Invalid passcode' }, 401);
+
+  // Timing-safe comparison
+  const a = new TextEncoder().encode(passcode.padEnd(128));
+  const b = new TextEncoder().encode(correct.padEnd(128));
+  let d = 0;
+  for (let i = 0; i < a.length; i++) d |= a[i] ^ b[i];
+  if (d !== 0 || passcode.length !== correct.length) {
+    return jsonResp({ error: 'Invalid passcode' }, 401);
+  }
+
+  const TTL = 8 * 60 * 60; // 8 hours in seconds
+  const token = generateToken();
+  const expiresAt = Date.now() + TTL * 1000;
+
+  await env.ASM_KV.put(`session:${token}`, JSON.stringify({
+    type: 'passcode',
+    expiresAt,
+  }), { expirationTtl: TTL });
+
+  const expiresTime = new Date(expiresAt).toLocaleTimeString('en-US', {
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  });
+
+  return new Response(JSON.stringify({
+    ok: true,
+    expiresAt,
+    message: `View-only access until ${expiresTime}`,
+  }), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Set-Cookie': cookieStr('asm_session', token, TTL),
+    },
+  });
 }
 
 async function checkPassword(request, env) {
@@ -104,14 +147,15 @@ async function me(request, env) {
   return jsonResp({
     user: {
       name: user.name, email: user.email, role: user.role,
-      photoUrl: user.photoUrl, leaderSince: user.leaderSince, funFact: user.funFact,
+      photoUrl: user.photoUrl || null, leaderSince: user.leaderSince || null,
+      funFact: user.funFact || null, expiresAt: user.expiresAt || null,
     },
   });
 }
 
 async function profileUpdate(request, env) {
   const user = await getSessionUser(env, request);
-  if (!user) return jsonResp({ error: 'Not authenticated' }, 401);
+  if (!user || !user.email) return jsonResp({ error: 'Not authenticated' }, 401);
   const updates = await request.json();
   const allowed = ['name', 'leaderSince', 'funFact', 'photoUrl'];
   allowed.forEach(k => { if (updates[k] !== undefined) user[k] = updates[k]; });

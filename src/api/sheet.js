@@ -9,7 +9,8 @@ export async function handleSheet(request, env, pathname, method) {
 async function sheetRead(request, env) {
   if (!env.GOOGLE_SCRIPT_URL) return jsonResp({ error: 'GOOGLE_SCRIPT_URL not set' }, 500);
   try {
-    const res = await fetch(env.GOOGLE_SCRIPT_URL + '?action=read');
+    const secret = env.GAS_SHARED_SECRET ? `&_s=${encodeURIComponent(env.GAS_SHARED_SECRET)}` : '';
+    const res = await fetch(env.GOOGLE_SCRIPT_URL + '?action=read' + secret);
     const text = await res.text();
     return new Response(text, { headers: { 'Content-Type': 'application/json' } });
   } catch (e) {
@@ -24,8 +25,9 @@ async function sheetWrite(request, env) {
   }
   if (!env.GOOGLE_SCRIPT_URL) return jsonResp({ error: 'GOOGLE_SCRIPT_URL not set' }, 500);
   try {
-    const params = new URL(request.url).searchParams.toString();
-    const res = await fetch(env.GOOGLE_SCRIPT_URL + '?' + params);
+    const params = new URL(request.url).searchParams;
+    if (env.GAS_SHARED_SECRET) params.set('_s', env.GAS_SHARED_SECRET);
+    const res = await fetch(env.GOOGLE_SCRIPT_URL + '?' + params.toString());
     const text = await res.text();
     return new Response(text, { headers: { 'Content-Type': 'application/json' } });
   } catch (e) {
