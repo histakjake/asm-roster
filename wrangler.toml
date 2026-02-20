@@ -5,8 +5,8 @@ compatibility_flags = ["nodejs_compat"]
 
 [[kv_namespaces]]
 binding = "ASM_KV"
-id = "YOUR_KV_NAMESPACE_ID"          # ← paste your KV namespace ID here
-preview_id = "YOUR_KV_PREVIEW_ID"   # ← paste preview ID here (can be same)
+id = "fa0dcdbcbfac4c11a7c0ecc9944684f8"          # ← paste your KV namespace ID here
+preview_id = "fa0dcdbcbfac4c11a7c0ecc9944684f8"   # ← paste preview ID here (can be same)
 
 # Secrets are set via: wrangler secret put SECRET_NAME
 # Required secrets:
