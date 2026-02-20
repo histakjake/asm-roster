@@ -66,7 +66,7 @@ body {
   justify-content: center; padding: 24px;
 }
 #screen-gate.active { display: flex; }
-.gate-box { width: 100%; max-width: 360px; text-align: center; }
+.gate-box { width: 100%; max-width: 560px; text-align: center; }
 .gate-logo {
   font-family: 'Bebas Neue', sans-serif;
   font-size: clamp(64px,16vw,110px);
@@ -80,7 +80,7 @@ body {
   color: var(--muted); margin: 10px 0 40px;
   animation: fadeDown .7s .1s var(--ease) both;
 }
-.gate-form { display: flex; flex-direction: column; gap: 12px; animation: fadeDown .7s .2s var(--ease) both; }
+.gate-form { display: flex; flex-direction: column; gap: 12px; max-width: 380px; margin: 0 auto; width: 100%; animation: fadeDown .7s .2s var(--ease) both; }
 .gate-input {
   background: var(--surface); border: 1px solid var(--border2);
   border-radius: var(--radius); padding: 15px 18px; color: var(--text);
@@ -99,6 +99,66 @@ body {
 .gate-btn:hover { opacity: .9; transform: scale(1.02); box-shadow: 0 8px 28px rgba(245,200,66,.35); }
 .gate-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
 .gate-error { font-size: 12px; color: var(--not-connected); font-family: 'JetBrains Mono', monospace; min-height: 18px; margin-top: 4px; }
+/* Two-lane home screen */
+.gate-lanes {
+  display: flex; gap: 16px; margin-bottom: 28px;
+  animation: fadeDown .7s .2s var(--ease) both;
+}
+.gate-lane {
+  flex: 1; background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); padding: 28px 18px 22px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  transition: border-color .2s, transform .2s;
+}
+.gate-lane:hover { border-color: var(--accent-border); transform: translateY(-2px); }
+.gate-lane-leader { border-color: rgba(99,102,241,.2); }
+.gate-lane-leader:hover { border-color: rgba(99,102,241,.45); }
+.lane-icon { font-size: 30px; line-height: 1; }
+.lane-title { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: .06em; }
+.lane-desc { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; text-align: center; line-height: 1.5; }
+.lane-btn {
+  margin-top: 8px; width: 100%; padding: 12px; border-radius: var(--radius);
+  font-weight: 700; font-size: 13px; cursor: pointer;
+  transition: opacity .2s, transform .2s;
+}
+.lane-btn:hover { opacity: .88; transform: scale(1.02); }
+.lane-btn-view {
+  background: var(--surface2); border: 1px solid var(--border2); color: var(--text2);
+}
+.lane-btn-view:hover { border-color: var(--accent-border); color: var(--accent); }
+.lane-btn-leader {
+  background: var(--accent); border: none; color: #000;
+}
+.lane-btn-leader:hover { box-shadow: 0 6px 20px rgba(245,200,66,.35); }
+/* Gate sub-form navigation */
+.gate-form-back {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 4px;
+}
+.back-btn {
+  background: none; border: none; color: var(--muted); font-size: 13px;
+  cursor: pointer; padding: 4px 0; transition: color .2s; font-family: 'Inter', sans-serif;
+}
+.back-btn:hover { color: var(--text); }
+.form-title {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
+}
+.gate-link {
+  display: block; margin-top: 8px; font-size: 12px; color: var(--muted);
+  text-decoration: none; font-family: 'JetBrains Mono', monospace;
+  transition: color .2s;
+}
+.gate-link:hover { color: var(--text); }
+.gate-need-access {
+  display: inline-block; margin-top: 28px; font-size: 11px; color: var(--muted);
+  text-decoration: none; font-family: 'JetBrains Mono', monospace;
+  letter-spacing: .1em; transition: color .2s;
+}
+.gate-need-access:hover { color: var(--accent); }
+@media (max-width: 480px) {
+  .gate-lanes { flex-direction: column; }
+  .gate-box { max-width: 360px; }
+}
 
 /* ── NAV ───────────────────────────────────────────────────── */
 .top-nav {

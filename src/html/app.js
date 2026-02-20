@@ -79,31 +79,92 @@ function switchMainNav(name, btn) {
 }
 
 // ── GATE ─────────────────────────────────────────────────────
-function initGate() {
-  if (localStorage.getItem('asm_gate')==='1') { initApp(); return; }
+async function initGate() {
+  // Check for an existing server-side session (passcode or leader)
+  try {
+    const res = await fetch('/api/me');
+    const data = await res.json();
+    if (data.user) { currentUser = data.user; canEdit = ['approved','admin','leader'].includes(currentUser.role); initApp(); return; }
+  } catch(_) {}
   showScreen('gate');
-  document.getElementById('gate-input').addEventListener('keydown', e => {
-    if (e.key==='Enter') checkPassword();
-  });
+  showLanes();
 }
 
-async function checkPassword() {
+function showLanes() {
+  const lf = document.getElementById('gate-leader-form');
+  const pf = document.getElementById('gate-passcode-form');
+  const la = document.getElementById('gate-lanes');
+  if (lf) lf.style.display = 'none';
+  if (pf) pf.style.display = 'none';
+  if (la) la.style.display = 'flex';
+}
+
+function showPasscodeForm() {
+  document.getElementById('gate-lanes').style.display = 'none';
+  const pf = document.getElementById('gate-passcode-form');
+  pf.style.display = 'flex';
+  document.getElementById('gate-input').focus();
+  document.getElementById('gate-input').onkeydown = e => { if (e.key==='Enter') checkPasscode(); };
+}
+
+function showLeaderForm() {
+  document.getElementById('gate-lanes').style.display = 'none';
+  const lf = document.getElementById('gate-leader-form');
+  lf.style.display = 'flex';
+  document.getElementById('gate-leader-email').focus();
+  document.getElementById('gate-leader-password').onkeydown = e => { if (e.key==='Enter') doGateLeaderLogin(); };
+}
+
+async function checkPasscode() {
   const val = document.getElementById('gate-input').value;
   const btn = document.getElementById('gate-btn');
   const err = document.getElementById('gate-error');
   btn.disabled=true; err.textContent='';
-  const res = await fetch('/api/auth/check-password', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({password:val}),
-  });
-  const data = await res.json();
-  if (data.ok) { localStorage.setItem('asm_gate','1'); initApp(); }
-  else {
-    err.textContent='Wrong password. Try again.';
-    document.getElementById('gate-input').value='';
-    document.getElementById('gate-input').focus();
-  }
+  try {
+    const res = await fetch('/api/auth/passcode', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({passcode:val}),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      currentUser = null; canEdit = false; // will be set by refreshCurrentUser in initApp
+      initApp();
+      showToast(data.message || 'View-only access enabled', 'ok');
+    } else {
+      err.textContent = 'Wrong passcode. Try again.';
+      document.getElementById('gate-input').value = '';
+      document.getElementById('gate-input').focus();
+    }
+  } catch(_) { err.textContent = 'Network error. Please try again.'; }
   btn.disabled=false;
+}
+
+async function doGateLeaderLogin() {
+  const email = (document.getElementById('gate-leader-email')||{}).value?.trim()||'';
+  const password = (document.getElementById('gate-leader-password')||{}).value||'';
+  const btn = document.getElementById('gate-leader-btn');
+  const err = document.getElementById('gate-leader-error');
+  if (!email||!password) { err.textContent='Please fill in all fields.'; return; }
+  btn.disabled=true; btn.textContent='Signing in…'; err.textContent='';
+  try {
+    const res = await fetch('/api/auth/login', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email,password}),
+    });
+    const data = await res.json();
+    if (data.success) {
+      currentUser = data.user; canEdit = ['approved','admin','leader'].includes(currentUser.role);
+      initApp();
+      showToast('Welcome back, '+currentUser.name+'!', 'ok');
+    } else {
+      err.textContent = data.error || 'Login failed.';
+    }
+  } catch(_) { err.textContent = 'Network error. Please try again.'; }
+  btn.disabled=false; btn.textContent='Sign In →';
+}
+
+function showNeedAccess() {
+  showToast('Contact your team admin or leader to request access.');
 }
 
 // ── INIT ─────────────────────────────────────────────────────
@@ -142,7 +203,18 @@ function updateNav() {
     if (!currentUser) {
       rb.style.display='flex';
       rb.querySelector('p').innerHTML='You\\'re viewing in <strong>read-only mode</strong>. Log in to edit.';
-      rb.querySelector('button').style.display='';
+      rb.querySelector('button').style.display=''; rb.querySelector('button').textContent='Log In';
+      rb.querySelector('button').onclick=()=>openAuthModal('login');
+    } else if (currentUser.role==='viewer') {
+      rb.style.display='flex';
+      let msg = 'View-only mode.';
+      if (currentUser.expiresAt) {
+        const t = new Date(currentUser.expiresAt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+        msg = 'View-only · Session expires at '+t+'.';
+      }
+      rb.querySelector('p').innerHTML=msg;
+      rb.querySelector('button').style.display=''; rb.querySelector('button').textContent='Leader Login';
+      rb.querySelector('button').onclick=()=>openAuthModal('login');
     } else if (currentUser.role==='pending') {
       rb.style.display='flex';
       rb.querySelector('p').innerHTML='<strong>Account pending.</strong> You\\'ll get an email when approved.';
@@ -314,7 +386,8 @@ async function doSignup() {
 
 async function logout() {
   await fetch('/api/auth/logout',{method:'POST'});
-  currentUser=null; canEdit=false; updateNav(); renderAll(); showScreen('app');
+  currentUser=null; canEdit=false;
+  showScreen('gate'); showLanes();
   showToast('Logged out');
 }
 

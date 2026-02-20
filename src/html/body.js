@@ -4,11 +4,48 @@ export const HTML_BODY = `
   <div class="gate-box">
     <div class="gate-logo">ASM<span>2026</span></div>
     <div class="gate-sub">Worship Grow Go · Anthem Students</div>
-    <div class="gate-form">
-      <input id="gate-input" class="gate-input" type="password" placeholder="Enter password" autocomplete="off">
-      <button class="gate-btn" id="gate-btn" onclick="checkPassword()">Enter</button>
+
+    <!-- Two-lane landing (default) -->
+    <div class="gate-lanes" id="gate-lanes">
+      <div class="gate-lane">
+        <div class="lane-icon">👁</div>
+        <div class="lane-title">Quick View</div>
+        <div class="lane-desc">View-only access with passcode</div>
+        <button class="lane-btn lane-btn-view" onclick="showPasscodeForm()">Enter Passcode</button>
+      </div>
+      <div class="gate-lane gate-lane-leader">
+        <div class="lane-icon">⚡</div>
+        <div class="lane-title">Leader Login</div>
+        <div class="lane-desc">Full access for team leaders</div>
+        <button class="lane-btn lane-btn-leader" onclick="showLeaderForm()">Sign In</button>
+      </div>
+    </div>
+
+    <!-- Passcode sub-form -->
+    <div class="gate-form" id="gate-passcode-form" style="display:none">
+      <div class="gate-form-back">
+        <button class="back-btn" onclick="showLanes()">← Back</button>
+        <span class="form-title">Quick View</span>
+      </div>
+      <input id="gate-input" class="gate-input" type="password" placeholder="Enter passcode" autocomplete="off">
+      <button class="gate-btn" id="gate-btn" onclick="checkPasscode()">Enter →</button>
       <div class="gate-error" id="gate-error"></div>
     </div>
+
+    <!-- Leader login sub-form -->
+    <div class="gate-form" id="gate-leader-form" style="display:none">
+      <div class="gate-form-back">
+        <button class="back-btn" onclick="showLanes()">← Back</button>
+        <span class="form-title">Leader Login</span>
+      </div>
+      <input id="gate-leader-email" class="gate-input" type="email" placeholder="Email" autocomplete="email">
+      <input id="gate-leader-password" class="gate-input" type="password" placeholder="Password" autocomplete="current-password">
+      <button class="gate-btn" id="gate-leader-btn" onclick="doGateLeaderLogin()">Sign In →</button>
+      <div class="gate-error" id="gate-leader-error"></div>
+      <a class="gate-link" href="#" onclick="event.preventDefault();openAuthModal('signup')">New leader? Sign up</a>
+    </div>
+
+    <a class="gate-need-access" href="#" onclick="event.preventDefault();showNeedAccess()">Need access? →</a>
   </div>
 </div>
 
