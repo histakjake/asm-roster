@@ -1,0 +1,17 @@
+name = "asm-roster"
+main = "src/worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[kv_namespaces]]
+binding = "ASM_KV"
+id = "YOUR_KV_NAMESPACE_ID"          # ← paste your KV namespace ID here
+preview_id = "YOUR_KV_PREVIEW_ID"   # ← paste preview ID here (can be same)
+
+# Secrets are set via: wrangler secret put SECRET_NAME
+# Required secrets:
+#   SITE_PASSWORD
+#   ADMIN_EMAIL
+#   GOOGLE_SCRIPT_URL
+#   MAILCHANNELS_FROM
+#   DRIVE_FOLDER_ID
