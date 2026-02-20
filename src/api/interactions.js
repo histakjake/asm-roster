@@ -1,8 +1,10 @@
 import { jsonResp, getSessionUser } from './utils.js';
 
 export async function handleInteractions(request, env, pathname, method) {
-  if (pathname === '/api/student/interactions' && method === 'GET')  return getInteractions(request, env);
-  if (pathname === '/api/student/interactions' && method === 'POST') return postInteraction(request, env);
+  if (pathname === '/api/student/interactions' && method === 'GET')    return getInteractions(request, env);
+  if (pathname === '/api/student/interactions' && method === 'POST')   return postInteraction(request, env);
+  if (pathname === '/api/student/interactions' && method === 'PUT')    return updateInteraction(request, env);
+  if (pathname === '/api/student/interactions' && method === 'DELETE') return deleteInteraction(request, env);
   return jsonResp({ error: 'Not found' }, 404);
 }
 
@@ -49,6 +51,60 @@ async function postInteraction(request, env) {
       env.ASM_KV && fetch(env.GOOGLE_SCRIPT_URL + '?' + params).catch(() => {});
     } catch (e) {}
   }
+
+  return jsonResp({ success: true });
+}
+
+async function updateInteraction(request, env) {
+  const user = await getSessionUser(env, request);
+  if (!user || !['approved', 'admin', 'leader'].includes(user.role)) {
+    return jsonResp({ error: 'Unauthorized' }, 403);
+  }
+
+  const body = await request.json();
+  const { sk, section, index, interactionId, changes } = body;
+
+  const kvKey = `interactions:${sk}:${section}:${index}`;
+  const existing = (await env.ASM_KV.get(kvKey, { type: 'json' })) || [];
+
+  const noteIndex = existing.findIndex(n => n.id === interactionId);
+  if (noteIndex === -1) return jsonResp({ error: 'Note not found' }, 404);
+
+  const note = existing[noteIndex];
+
+  // Only the original author or an admin may edit
+  if (user.role !== 'admin' && note.leaderEmail !== user.email) {
+    return jsonResp({ error: 'Forbidden' }, 403);
+  }
+
+  existing[noteIndex] = { ...note, ...changes, updatedAt: new Date().toISOString() };
+  await env.ASM_KV.put(kvKey, JSON.stringify(existing));
+
+  return jsonResp({ success: true });
+}
+
+async function deleteInteraction(request, env) {
+  const user = await getSessionUser(env, request);
+  if (!user || !['approved', 'admin', 'leader'].includes(user.role)) {
+    return jsonResp({ error: 'Unauthorized' }, 403);
+  }
+
+  const body = await request.json();
+  const { sk, section, index, interactionId } = body;
+
+  const kvKey = `interactions:${sk}:${section}:${index}`;
+  const existing = (await env.ASM_KV.get(kvKey, { type: 'json' })) || [];
+
+  const note = existing.find(n => n.id === interactionId);
+  if (!note) return jsonResp({ error: 'Note not found' }, 404);
+
+  // Only the original author or an admin may delete
+  if (user.role !== 'admin' && note.leaderEmail !== user.email) {
+    return jsonResp({ error: 'Forbidden' }, 403);
+  }
+
+  const updated = existing.filter(n => n.id !== interactionId);
+  await env.ASM_KV.put(kvKey, JSON.stringify(updated));
 
   return jsonResp({ success: true });
 }

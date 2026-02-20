@@ -60,8 +60,17 @@ export const HTML_BODY = `
         <button class="nav-pill" onclick="switchMainNav('dump',this)">Brain Dump</button>
       </div>
       <div class="nav-right" id="nav-right"></div>
+      <button class="nav-hamburger" id="nav-hamburger" onclick="toggleMobileNav()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </nav>
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay" onclick="closeMobileNav()"></div>
+  <div class="mobile-nav-drawer" id="mobile-nav-drawer">
+    <button class="mob-nav-pill" id="mob-pill-roster"   onclick="switchMainNav('roster',this);closeMobileNav()">Roster</button>
+    <button class="mob-nav-pill" id="mob-pill-activity" onclick="switchMainNav('activity',this);closeMobileNav()">Activity</button>
+    <button class="mob-nav-pill" id="mob-pill-dump"     onclick="switchMainNav('dump',this);closeMobileNav()">Brain Dump</button>
+  </div>
 
   <!-- ROSTER PANEL -->
   <div id="nav-roster" class="nav-panel">
@@ -319,6 +328,33 @@ export const HTML_BODY = `
     <div class="modal-actions">
       <button class="btn-save" onclick="saveInteraction()">Log It ✓</button>
       <button class="btn-secondary" onclick="closeInteractionModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT HANGOUT NOTE -->
+<div class="modal-overlay" id="edit-interaction-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('edit-interaction-modal')">✕</button>
+    <div class="modal-title">Edit Hangout Note</div>
+    <div class="field"><label>Date</label><input type="date" id="edit-int-date"></div>
+    <div class="field"><label>What happened? Any key moments or prayer requests?</label><textarea id="edit-int-summary" rows="5"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-save" onclick="saveEditedInteraction()">Save Changes</button>
+      <button class="btn-secondary" onclick="closeModal('edit-interaction-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE NOTE -->
+<div class="modal-overlay" id="confirm-delete-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('confirm-delete-modal')">✕</button>
+    <div class="modal-title">Delete Note?</div>
+    <div class="modal-sub">Are you sure you want to delete this note? This cannot be undone.</div>
+    <div class="modal-actions">
+      <button class="btn-danger" onclick="confirmDeleteInteraction()">Delete</button>
+      <button class="btn-secondary" onclick="closeModal('confirm-delete-modal')">Cancel</button>
     </div>
   </div>
 </div>

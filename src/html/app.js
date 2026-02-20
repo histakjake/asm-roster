@@ -9,6 +9,9 @@ let currentStudentKey = null;
 let editState = { mode:'add', sk:'hs', section:'core', index:-1 };
 let connectedVal = false;
 let interactionKey = null;
+let editInteractionContext = null;
+let pendingDeleteInteraction = null;
+let currentInteractions = [];
 let toastTimer = null;
 
 // ── GRADIENTS (yellow palette) ──────────────────────────────
@@ -75,7 +78,21 @@ function switchMainNav(name, btn) {
   if (p) p.style.display='';
   document.querySelectorAll('.nav-pill').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
+  // Sync mobile drawer active state
+  ['roster','activity','dump'].forEach(n => {
+    const mb = document.getElementById('mob-pill-'+n);
+    if (mb) mb.classList.toggle('active', n === name);
+  });
   if (name==='activity') loadActivityFeed();
+}
+
+function toggleMobileNav() {
+  document.getElementById('mobile-nav-drawer').classList.toggle('open');
+  document.getElementById('mobile-nav-overlay').classList.toggle('open');
+}
+function closeMobileNav() {
+  document.getElementById('mobile-nav-drawer').classList.remove('open');
+  document.getElementById('mobile-nav-overlay').classList.remove('open');
 }
 
 // ── GATE ─────────────────────────────────────────────────────
@@ -601,7 +618,7 @@ async function renderStudentDetail(sk, section, index) {
   try {
     const res=await fetch('/api/student/interactions?sk='+sk+'&section='+section+'&index='+index);
     const d=await res.json();
-    renderInteractionsList(d.interactions||[]);
+    renderInteractionsList(d.interactions||[], sk, section, index);
   } catch(e) { document.getElementById('interactions-list').innerHTML='<div class="empty"><p>Could not load.</p></div>'; }
 }
 
@@ -621,21 +638,34 @@ function renderGoalsList(goals,sk,section,index) {
   ).join('');
 }
 
-function renderInteractionsList(interactions) {
+function renderInteractionsList(interactions, sk, section, index) {
+  currentInteractions = interactions;
   const el=document.getElementById('interactions-list');
   if (!el) return;
   const ic=document.getElementById('int-count');
   if (ic) ic.textContent=interactions.length ? interactions.length+' logged' : '';
   if (!interactions.length) { el.innerHTML='<div class="empty"><p>No hangouts logged yet.</p></div>'; return; }
-  el.innerHTML=[...interactions].reverse().map(int=>
-    '<div class="int-item">'+
+  el.innerHTML=[...interactions].reverse().map(int=>{
+    const canManage=int.id && currentUser && (int.leaderEmail===currentUser.email || currentUser.role==='admin');
+    const editedTag=int.updatedAt ? ' <span class="int-edited">edited</span>' : '';
+    const safeId=String(int.id).replace(/'/g,"\\'");
+    const safeSk=String(sk).replace(/'/g,"\\'");
+    const safeSec=String(section).replace(/'/g,"\\'");
+    const actBtns=canManage
+      ? '<div class="int-actions">'+
+          '<button class="int-action-btn" onclick="openEditInteractionModal(\''+safeId+'\',\''+safeSk+'\',\''+safeSec+'\','+index+')">Edit</button>'+
+          '<button class="int-action-btn danger" onclick="deleteInteractionNote(\''+safeId+'\',\''+safeSk+'\',\''+safeSec+'\','+index+')">Delete</button>'+
+        '</div>'
+      : '';
+    return '<div class="int-item">'+
       '<div class="int-header">'+
         '<div class="int-av">'+initials(int.leader)+'</div>'+
-        '<div><div class="int-who">'+int.leader+'</div><div class="int-when">'+formatDate(int.date)+' · '+timeAgo(int.createdAt)+'</div></div>'+
+        '<div><div class="int-who">'+int.leader+editedTag+'</div><div class="int-when">'+formatDate(int.date)+' · '+timeAgo(int.createdAt)+'</div></div>'+
       '</div>'+
       '<div class="int-body">'+int.summary+'</div>'+
-    '</div>'
-  ).join('');
+      actBtns+
+    '</div>';
+  }).join('');
 }
 
 // ── GOALS CRUD ────────────────────────────────────────────────
@@ -691,7 +721,7 @@ async function saveInteraction() {
   if (!leader||!summary) { showToast('Leader name and summary required','error'); return; }
   const {sk,section,index,studentName}=interactionKey;
   const person=DATA[sk][section][index];
-  const interaction={leader,date,summary,createdAt:new Date().toISOString(),leaderEmail:currentUser?currentUser.email:''};
+  const interaction={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),leader,date,summary,createdAt:new Date().toISOString(),leaderEmail:currentUser?currentUser.email:''};
   const res=await fetch('/api/student/interactions',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({sk,section,index,rowIndex:person.rowIndex,studentName,interaction}),
@@ -702,6 +732,55 @@ async function saveInteraction() {
     showToast('✓ Hangout logged!','ok');
     if (currentStudentKey) renderStudentDetail(currentStudentKey.sk,currentStudentKey.section,currentStudentKey.index);
   } else showToast(data.error||'Failed','error');
+}
+
+// ── INTERACTION EDIT / DELETE ─────────────────────────────────
+function openEditInteractionModal(intId, sk, section, index) {
+  const int = currentInteractions.find(n => n.id === intId);
+  if (!int) return;
+  editInteractionContext = { int, sk, section, index };
+  sv('edit-int-date', int.date || '');
+  sv('edit-int-summary', int.summary || '');
+  openModal('edit-interaction-modal');
+}
+
+async function saveEditedInteraction() {
+  if (!editInteractionContext) return;
+  const { int, sk, section, index } = editInteractionContext;
+  const date = v('edit-int-date');
+  const summary = v('edit-int-summary');
+  if (!summary) { showToast('Summary cannot be empty', 'error'); return; }
+  const res = await fetch('/api/student/interactions', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sk, section, index, interactionId: int.id, changes: { date, summary } }),
+  });
+  const data = await res.json();
+  if (data.success) {
+    closeModal('edit-interaction-modal');
+    showToast('✓ Note updated', 'ok');
+    if (currentStudentKey) renderStudentDetail(currentStudentKey.sk, currentStudentKey.section, currentStudentKey.index);
+  } else showToast(data.error || 'Failed', 'error');
+}
+
+function deleteInteractionNote(id, sk, section, index) {
+  pendingDeleteInteraction = { id, sk, section, index };
+  openModal('confirm-delete-modal');
+}
+
+async function confirmDeleteInteraction() {
+  if (!pendingDeleteInteraction) return;
+  const { id, sk, section, index } = pendingDeleteInteraction;
+  const res = await fetch('/api/student/interactions', {
+    method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sk, section, index, interactionId: id }),
+  });
+  const data = await res.json();
+  if (data.success) {
+    closeModal('confirm-delete-modal');
+    pendingDeleteInteraction = null;
+    showToast('Note deleted', 'ok');
+    if (currentStudentKey) renderStudentDetail(currentStudentKey.sk, currentStudentKey.section, currentStudentKey.index);
+  } else showToast(data.error || 'Failed', 'error');
 }
 
 // ── ACTIVITY FEED ─────────────────────────────────────────────
