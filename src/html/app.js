@@ -648,13 +648,10 @@ function renderInteractionsList(interactions, sk, section, index) {
   el.innerHTML=[...interactions].reverse().map(int=>{
     const canManage=int.id && currentUser && (int.leaderEmail===currentUser.email || currentUser.role==='admin');
     const editedTag=int.updatedAt ? ' <span class="int-edited">edited</span>' : '';
-    const safeId=String(int.id).replace(/'/g,"\\'");
-    const safeSk=String(sk).replace(/'/g,"\\'");
-    const safeSec=String(section).replace(/'/g,"\\'");
     const actBtns=canManage
       ? '<div class="int-actions">'+
-          '<button class="int-action-btn" onclick="openEditInteractionModal(\''+safeId+'\',\''+safeSk+'\',\''+safeSec+'\','+index+')">Edit</button>'+
-          '<button class="int-action-btn danger" onclick="deleteInteractionNote(\''+safeId+'\',\''+safeSk+'\',\''+safeSec+'\','+index+')">Delete</button>'+
+          '<button class="int-action-btn" data-id="'+int.id+'" data-sk="'+sk+'" data-sec="'+section+'" data-idx="'+index+'" onclick="openEditInteractionModal(this.dataset.id,this.dataset.sk,this.dataset.sec,+this.dataset.idx)">Edit</button>'+
+          '<button class="int-action-btn danger" data-id="'+int.id+'" data-sk="'+sk+'" data-sec="'+section+'" data-idx="'+index+'" onclick="deleteInteractionNote(this.dataset.id,this.dataset.sk,this.dataset.sec,+this.dataset.idx)">Delete</button>'+
         '</div>'
       : '';
     return '<div class="int-item">'+
