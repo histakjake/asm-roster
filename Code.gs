@@ -31,6 +31,14 @@ const SHEETS = { hs: 'HS', ms: 'MS' };
 // ── ENTRY POINTS ─────────────────────────────────────────────────────────────
 function doGet(e) {
   try {
+    // Reject requests that don't carry the Worker shared secret.
+    // Set WORKER_SECRET in Apps Script → Project Settings → Script Properties.
+    // Leave it unset to disable the check during initial setup.
+    const expected = PropertiesService.getScriptProperties().getProperty('WORKER_SECRET') || '';
+    if (expected && (e.parameter._s || '') !== expected) {
+      return json({ error: 'Unauthorized' });
+    }
+
     const action  = e.parameter.action;
     const payload = e.parameter.payload ? JSON.parse(e.parameter.payload) : {};
 
@@ -51,6 +59,10 @@ function doGet(e) {
 function doPost(e) {
   try {
     const body   = JSON.parse(e.postData.contents);
+    const expected = PropertiesService.getScriptProperties().getProperty('WORKER_SECRET') || '';
+    if (expected && (body._s || '') !== expected) {
+      return json({ error: 'Unauthorized' });
+    }
     const action = body.action;
 
     let result;

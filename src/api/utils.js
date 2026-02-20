@@ -24,6 +24,10 @@ export async function getSessionUser(env, request) {
     if (sess) await env.ASM_KV.delete(`session:${token}`);
     return null;
   }
+  // Passcode session — return synthetic read-only user (no email, no editing)
+  if (sess.type === 'passcode') {
+    return { name: 'Viewer', email: null, role: 'viewer', expiresAt: sess.expiresAt };
+  }
   return env.ASM_KV.get(`user:${sess.email}`, { type: 'json' });
 }
 
