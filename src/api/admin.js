@@ -28,6 +28,10 @@ async function updateUser(request, env) {
   if (!email || !['approved', 'pending', 'admin', 'leader'].includes(role)) {
     return jsonResp({ error: 'Invalid request' }, 400);
   }
+  // Prevent admin from revoking their own admin role
+  if (email.toLowerCase() === user.email.toLowerCase() && user.role === 'admin' && role !== 'admin') {
+    return jsonResp({ error: 'You cannot change your own admin status.' }, 403);
+  }
   const target = await env.ASM_KV.get(`user:${email.toLowerCase()}`, { type: 'json' });
   if (!target) return jsonResp({ error: 'User not found' }, 404);
   const wasApproved = target.role === 'pending' && role !== 'pending';

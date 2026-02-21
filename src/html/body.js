@@ -2,7 +2,7 @@ export const HTML_BODY = `
 <!-- ════ GATE ════════════════════════════════════════════════ -->
 <div id="screen-gate" class="screen">
   <div class="gate-box">
-    <div class="gate-logo">ASM<span>2026</span></div>
+    <div class="gate-logo">ASM<span id="year-gate">2026</span></div>
     <div class="gate-sub">Worship Grow Go · Anthem Students</div>
 
     <!-- Two-lane landing (default) -->
@@ -53,7 +53,7 @@ export const HTML_BODY = `
 <div id="screen-app" class="screen">
   <nav class="top-nav">
     <div class="nav-inner">
-      <div class="nav-logo">ASM<span>&nbsp;2026</span></div>
+      <div class="nav-logo">ASM<span id="year-nav">&nbsp;2026</span></div>
       <div class="nav-pills">
         <button class="nav-pill active" onclick="switchMainNav('roster',this)">Roster</button>
         <button class="nav-pill" onclick="switchMainNav('dashboard',this)">Dashboard</button>
@@ -74,12 +74,32 @@ export const HTML_BODY = `
     <button class="mob-nav-pill" id="mob-pill-dump"     onclick="switchMainNav('dump',this);closeMobileNav()">Brain Dump</button>
   </div>
 
+  <!-- BOTTOM NAV (mobile) -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="bnav-btn active" id="bnav-roster" onclick="switchMainNav('roster',this)">
+      <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Roster</span>
+    </button>
+    <button class="bnav-btn" id="bnav-dashboard" onclick="switchMainNav('dashboard',this)">
+      <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="bnav-btn" id="bnav-activity" onclick="switchMainNav('activity',this)">
+      <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Activity</span>
+    </button>
+    <button class="bnav-btn" id="bnav-dump" onclick="switchMainNav('dump',this)">
+      <svg viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      <span>Dump</span>
+    </button>
+  </nav>
+
   <!-- ROSTER PANEL -->
   <div id="nav-roster" class="nav-panel">
     <div class="container">
       <header>
         <div class="logo-line">Worship <span>Grow Go</span></div>
-        <div class="subtitle">Anthem Students · ASM 2026</div>
+        <div class="subtitle">Anthem Students · ASM <span id="year-sub">2026</span></div>
       </header>
 
       <div class="readonly-banner" id="readonly-banner" style="display:none">
@@ -92,11 +112,17 @@ export const HTML_BODY = `
         <button class="seg-btn" onclick="switchTab('ms',this)">Middle School</button>
       </div>
 
-      <div class="search-wrap">
-        <span class="search-icon">🔍</span>
-        <input class="search-input" id="roster-search" placeholder="Search students…" oninput="applyFilters()">
+      <div class="search-row">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="search-input" id="roster-search" placeholder="Search students…" oninput="applyFilters()">
+          <button class="search-clear" id="search-clear" onclick="clearSearch()" title="Clear search">✕</button>
+        </div>
+        <button class="filter-toggle-btn" id="filter-toggle-btn" onclick="toggleFilterPanel()">
+          Filters<span class="filter-count" id="filter-count"></span>
+        </button>
       </div>
-      <div class="filter-bar" id="filter-bar">
+      <div class="filter-panel" id="filter-panel">
         <div class="filter-group">
           <select class="filter-select" id="filter-grade" onchange="applyFilters()">
             <option value="">All Grades</option>
@@ -120,7 +146,7 @@ export const HTML_BODY = `
           </select>
         </div>
         <div class="filter-actions">
-          <button class="filter-action-btn" onclick="clearFilters()" title="Clear filters">Clear</button>
+          <button class="filter-action-btn" onclick="clearFilters()" title="Clear filters">Clear All</button>
           <button class="filter-action-btn" onclick="exportCSV()" title="Download CSV">Export CSV</button>
           <button class="filter-action-btn" onclick="printRoster()" title="Print roster">Print</button>
         </div>
@@ -170,7 +196,7 @@ export const HTML_BODY = `
         <div class="roster-grid" id="ms-fringe-grid"></div>
       </div>
 
-      <footer>Worship Grow Go · Anthem Students 2026</footer>
+      <footer>Worship Grow Go · Anthem Students <span id="year-footer">2026</span></footer>
     </div>
   </div>
 
@@ -218,7 +244,7 @@ export const HTML_BODY = `
 <div id="screen-student" class="screen">
   <nav class="top-nav">
     <div class="nav-inner">
-      <div class="nav-logo">ASM<span>&nbsp;2026</span></div>
+      <div class="nav-logo">ASM<span id="year-student-nav">&nbsp;2026</span></div>
       <div class="nav-right" id="student-nav-right"></div>
     </div>
   </nav>
@@ -266,7 +292,7 @@ export const HTML_BODY = `
   <div class="modal">
     <button class="modal-close" onclick="closeModal('auth-modal')">✕</button>
     <div class="modal-title" id="auth-modal-title">Welcome Back</div>
-    <div class="modal-sub">ASM 2026 · Anthem Students</div>
+    <div class="modal-sub">ASM <span id="year-auth">2026</span> · Anthem Students</div>
     <div class="modal-tabs">
       <button class="modal-tab active" id="tab-login-btn" onclick="switchAuthTab('login')">Log In</button>
       <button class="modal-tab" id="tab-signup-btn" onclick="switchAuthTab('signup')">Sign Up</button>
@@ -362,6 +388,14 @@ export const HTML_BODY = `
     <div class="field"><label>Display Name</label><input type="text" id="profile-name-input" placeholder="Your full name"></div>
     <div class="field"><label>Leader Since</label><input type="text" id="profile-since-input" placeholder="e.g. September 2022"></div>
     <div class="field"><label>Fun Fact</label><input type="text" id="profile-funfact-input" placeholder="e.g. I can eat 12 tacos in one sitting"></div>
+    <div class="field">
+      <label>Appearance</label>
+      <div class="theme-toggle-row">
+        <button id="theme-btn-dark"  class="theme-btn" onclick="applyTheme('dark')">Dark</button>
+        <button id="theme-btn-auto"  class="theme-btn" onclick="applyTheme('auto')">Auto</button>
+        <button id="theme-btn-light" class="theme-btn" onclick="applyTheme('light')">Light</button>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn-save" onclick="saveProfile()">Save Profile</button>
       <button class="btn-secondary" onclick="closeProfileModal()">Cancel</button>
@@ -425,6 +459,29 @@ export const HTML_BODY = `
     </div>
   </div>
 </div>
+
+<!-- PHOTO CROP MODAL -->
+<div class="modal-overlay" id="crop-modal">
+  <div class="modal crop-modal-inner">
+    <button class="modal-close" onclick="closeModal('crop-modal')">✕</button>
+    <div class="modal-title">Adjust Photo</div>
+    <div class="modal-sub">Drag to reposition · Scroll to zoom</div>
+    <div class="crop-canvas-wrap">
+      <canvas id="crop-canvas" width="300" height="300"></canvas>
+    </div>
+    <div class="crop-zoom-wrap">
+      <span class="crop-zoom-label">Zoom</span>
+      <input type="range" id="crop-zoom" class="crop-zoom-slider" min="1" max="3" step="0.01" value="1" oninput="onCropZoom(this.value)">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-save" onclick="saveCrop()">Use Photo</button>
+      <button class="btn-secondary" onclick="closeCropModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input for photo picking -->
+<input type="file" id="shared-photo-input" accept="image/*" style="display:none" onchange="onSharedPhotoSelected(this)">
 
 <!-- TOAST -->
 <div id="toast" class="toast"></div>

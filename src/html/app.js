@@ -14,6 +14,44 @@ let pendingDeleteInteraction = null;
 let currentInteractions = [];
 let toastTimer = null;
 
+// ── THEME ────────────────────────────────────────────────────
+function initTheme() {
+  const pref = localStorage.getItem('asm-theme') || 'auto';
+  applyTheme(pref);
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if ((localStorage.getItem('asm-theme') || 'auto') === 'auto') applyTheme('auto');
+  });
+}
+function applyTheme(pref) {
+  const root = document.documentElement;
+  if (pref === 'light') root.setAttribute('data-theme', 'light');
+  else if (pref === 'dark') root.setAttribute('data-theme', 'dark');
+  else {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+  }
+  localStorage.setItem('asm-theme', pref);
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  const activeBtn = document.getElementById('theme-btn-' + pref);
+  if (activeBtn) activeBtn.classList.add('active');
+}
+
+// ── SWIPE BACK ────────────────────────────────────────────────
+function initSwipeBack() {
+  const screen = document.getElementById('screen-student');
+  if (!screen) return;
+  let startX = 0, startY = 0;
+  screen.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+  }, { passive: true });
+  screen.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (startX < 50 && dx > 80 && Math.abs(dy) < 80) goBack();
+  }, { passive: true });
+}
+
 // ── GRADIENTS (yellow palette) ──────────────────────────────
 const GRADIENTS = [
   'linear-gradient(135deg,#f5c842,#f0a800)',
@@ -69,6 +107,8 @@ function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   const el = document.getElementById('screen-'+name);
   if (el) { el.classList.add('active'); window.scrollTo(0,0); }
+  const bnav = document.getElementById('bottom-nav');
+  if (bnav) bnav.style.display = name === 'app' ? '' : 'none';
 }
 
 // ── MAIN NAV PANELS ──────────────────────────────────────────
@@ -82,6 +122,11 @@ function switchMainNav(name, btn) {
   ['roster','dashboard','activity','dump'].forEach(n => {
     const mb = document.getElementById('mob-pill-'+n);
     if (mb) mb.classList.toggle('active', n === name);
+  });
+  // Sync bottom nav active state
+  ['roster','dashboard','activity','dump'].forEach(n => {
+    const bb = document.getElementById('bnav-'+n);
+    if (bb) bb.classList.toggle('active', n === name);
   });
   if (name==='activity') loadActivityFeed();
   if (name==='dashboard') renderDashboard();
@@ -320,9 +365,14 @@ function makeCard(person, idx, sk, section) {
     ? '<button class="card-edit-btn" onclick="event.stopPropagation();openEditModal(\\''+sk+'\\',\\''+section+'\\','+idx+')" title="Edit">✏️</button>'
     : '';
 
+  const avatarClick = canEdit
+    ? 'event.stopPropagation();openEditModal(\\''+sk+'\\',\\''+section+'\\','+idx+')'
+    : '';
   card.innerHTML = editBtn +
-    '<div class="card-avatar"><div class="av-fallback" style="background:'+g+'">'+initials(person.name)+'</div>'+
+    '<div class="card-avatar"'+(canEdit?' onclick="'+avatarClick+'"':'')+'>'+
+    '<div class="av-fallback" style="background:'+g+'">'+initials(person.name)+'</div>'+
     (thumb ? '<img src="'+thumb+'" alt="" loading="lazy" onload="this.classList.add(\\'loaded\\')" onerror="this.style.display=\\'none\\'">' : '')+
+    (canEdit?'<div class="av-edit-overlay">📷</div>':'')+
     '</div><div class="card-name-row"><div class="card-name">'+person.name+'</div>'+
     (person.grade ? '<span class="badge-grade">Gr.'+person.grade+'</span>' : '')+'</div>'+
     (meta ? '<div class="card-meta">'+meta+'</div>' : '')+
@@ -428,19 +478,31 @@ async function saveProfile() {
   } else showToast(data.error||'Update failed','error');
 }
 
-async function uploadProfilePhoto(input) {
+function uploadProfilePhoto(input) {
   if (!input.files.length) return;
-  showToast('Uploading…');
-  const fd=new FormData(); fd.append('file',input.files[0]); fd.append('type','leader');
-  const res=await fetch('/api/upload-photo',{method:'POST',body:fd});
-  const data=await res.json();
-  if (data.url) {
-    await fetch('/api/profile/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({photoUrl:data.url})});
-    currentUser.photoUrl=data.url;
-    const thumb=driveThumb(data.url);
-    if(thumb){const img=document.getElementById('profile-av-img');img.src=thumb;img.style.display='';img.onload=()=>img.classList.add('loaded');}
-    updateNav(); showToast('✓ Photo updated','ok');
-  } else showToast(data.error||'Upload failed','error');
+  const file=input.files[0]; input.value='';
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      cropImg=img; cropZoom=1; cropOffX=0; cropOffY=0;
+      cropCallback=async blob=>{
+        const data=await uploadCroppedBlob(blob,'leader');
+        if(data.url){
+          await fetch('/api/profile/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({photoUrl:data.url})});
+          currentUser.photoUrl=data.url;
+          const thumb=driveThumb(data.url);
+          if(thumb){const i=document.getElementById('profile-av-img');i.src=thumb;i.style.display='';i.onload=()=>i.classList.add('loaded');}
+          updateNav(); showToast('✓ Photo updated','ok');
+        } else showToast(data.error||'Upload failed','error');
+      };
+      openModal('crop-modal');
+      drawCrop(); initCropDrag();
+      document.getElementById('crop-zoom').value=1;
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 
 // ── EDIT STUDENT MODAL ────────────────────────────────────────
@@ -496,14 +558,42 @@ function updateEditPhotoPreview() {
   else img.style.display='none';
 }
 
-async function uploadStudentPhoto(input) {
+function uploadStudentPhoto(input) {
   if (!input.files.length) return;
-  showToast('Uploading…');
-  const fd=new FormData(); fd.append('file',input.files[0]); fd.append('type','student');
-  const res=await fetch('/api/upload-photo',{method:'POST',body:fd});
-  const data=await res.json();
-  if (data.url) { sv('ef-photoUrl',data.url); updateEditPhotoPreview(); showToast('✓ Uploaded','ok'); }
-  else showToast(data.error||'Upload failed','error');
+  const file=input.files[0]; input.value='';
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      cropImg=img; cropZoom=1; cropOffX=0; cropOffY=0;
+      cropCallback=async blob=>{
+        const data=await uploadCroppedBlob(blob,'student');
+        if(data.url){sv('ef-photoUrl',data.url);updateEditPhotoPreview();showToast('✓ Uploaded','ok');}
+        else showToast(data.error||'Upload failed','error');
+      };
+      openModal('crop-modal');
+      drawCrop(); initCropDrag();
+      document.getElementById('crop-zoom').value=1;
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function triggerStudentDetailPhotoUpload(sk, section, index) {
+  if (!canEdit) return;
+  cropCallback=async blob=>{
+    const data=await uploadCroppedBlob(blob,'student');
+    if(!data.url){showToast(data.error||'Upload failed','error');return;}
+    const person=DATA[sk][section][index];
+    person.photoUrl=data.url;
+    const params=new URLSearchParams({action:'update',payload:JSON.stringify({sheet:sk,rowIndex:person.rowIndex,fields:{photoUrl:data.url}})});
+    await fetch('/api/sheet/write?'+params);
+    renderStudentDetail(sk,section,index);
+    showToast('✓ Photo updated','ok');
+  };
+  const input=document.getElementById('shared-photo-input');
+  if(input){input.value='';input.click();}
 }
 
 async function saveEdit() {
@@ -595,10 +685,14 @@ async function renderStudentDetail(sk, section, index) {
     ? '<button class="nav-btn" onclick="openInteractionModal(\\''+sk+'\\',\\''+section+'\\','+index+',\\''+person.name+'\\')">+ Log Hangout</button>'
     : '';
 
+  const sdAvatarClick = canEdit ? ' onclick="triggerStudentDetailPhotoUpload(\\''+sk+'\\',\\''+section+'\\','+index+')"' : '';
   el.innerHTML =
     '<div class="student-hero">'+
+      '<div class="sd-avatar-wrap"'+sdAvatarClick+'>'+
       '<div class="student-avatar-lg"><div class="av-fallback" style="background:'+g+'">'+initials(person.name)+'</div>'+
       (thumb?'<img src="'+thumb+'" alt="" onload="this.classList.add(\\'loaded\\')" onerror="this.style.display=\\'none\\'">':'')+
+      '</div>'+
+      (canEdit?'<div class="av-cam-overlay">📷</div>':'')+
       '</div>'+
       '<div class="student-info">'+
         '<div class="student-name">'+person.name+'</div>'+
@@ -925,17 +1019,29 @@ async function loadAdminUsers() {
   const users=data.users||[];
   const el=document.getElementById('admin-users-table');
   if (!users.length) { el.innerHTML='<div class="empty"><p>No users.</p></div>'; return; }
+  const selfEmail=(currentUser?.email||'').toLowerCase();
   el.innerHTML='<table class="user-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead><tbody>'+
-    users.map(u=>'<tr><td>'+u.name+'</td><td style="color:var(--muted)">'+u.email+'</td><td><span class="role-badge '+u.role+'">'+u.role+'</span></td>'+
-      '<td style="color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;font-size:11px">'+(u.createdAt?new Date(u.createdAt).toLocaleDateString():'—')+'</td>'+
-      '<td><div class="btn-row">'+
-        (u.role==='pending'  ?'<button class="role-btn approve" onclick="updateUser(\\''+u.email+'\\',\\'approved\\')">Approve</button>':'')+
-        (u.role==='approved' ?'<button class="role-btn mk-leader" onclick="updateUser(\\''+u.email+'\\',\\'leader\\')">→ Leader</button>':'')+
-        (u.role==='leader'   ?'<button class="role-btn revoke" onclick="updateUser(\\''+u.email+'\\',\\'approved\\')">Remove Leader</button>':'')+
-        (u.role!=='admin'    ?'<button class="role-btn mk-admin" onclick="updateUser(\\''+u.email+'\\',\\'admin\\')">→ Admin</button>':'')+
-        (u.role!=='pending'  ?'<button class="role-btn revoke" onclick="updateUser(\\''+u.email+'\\',\\'pending\\')">Revoke</button>':'')+
-      '</div></td></tr>'
-    ).join('')+'</tbody></table>';
+    users.map(u=>{
+      const isSelf=u.email.toLowerCase()===selfEmail;
+      const isAdmin=u.role==='admin';
+      const isLeader=u.role==='leader';
+      const isPending=u.role==='pending';
+      const leaderChecked=(isLeader||isAdmin)?'checked':'';
+      const leaderDisabled=(isSelf||isAdmin)?'disabled':'';
+      return '<tr'+(isSelf?' style="background:var(--accent-glow)"':'')+'><td>'+u.name+(isSelf?' <span style="font-size:10px;color:var(--muted)">(you)</span>':'')+'</td>'+
+        '<td style="color:var(--muted)">'+u.email+'</td>'+
+        '<td><span class="role-badge '+u.role+'">'+u.role+'</span></td>'+
+        '<td style="color:var(--muted);font-family:\\'JetBrains Mono\\',monospace;font-size:11px">'+(u.createdAt?new Date(u.createdAt).toLocaleDateString():'—')+'</td>'+
+        '<td><div class="btn-row">'+
+          (isPending?'<button class="role-btn approve" onclick="updateUser(\\''+u.email+'\\',\\'approved\\')">Approve</button>':'')+
+          (!isAdmin?'<label class="leader-toggle" title="Toggle leader access"><input type="checkbox" '+leaderChecked+' '+leaderDisabled+' onchange="toggleLeader(\\''+u.email+'\\',this.checked)"><span>Leader</span></label>':'')+
+          (!isSelf&&!isAdmin?'<button class="role-btn mk-admin" onclick="updateUser(\\''+u.email+'\\',\\'admin\\')">→ Admin</button>':'')+
+          (!isSelf&&!isPending?'<button class="role-btn revoke" onclick="updateUser(\\''+u.email+'\\',\\'pending\\')">Revoke</button>':'')+
+        '</div></td></tr>';
+    }).join('')+'</tbody></table>';
+}
+async function toggleLeader(email, isLeader) {
+  await updateUser(email, isLeader ? 'leader' : 'approved');
 }
 async function loadAdminMetrics() {
   const el=document.getElementById('admin-metrics-content');
@@ -958,6 +1064,9 @@ async function loadAdminMetrics() {
   } catch(e) { el.innerHTML='<div class="empty"><p>Could not load.</p></div>'; }
 }
 async function updateUser(email,role) {
+  if (currentUser && email.toLowerCase()===currentUser.email.toLowerCase() && currentUser.role==='admin' && role!=='admin') {
+    showToast('You cannot change your own admin status','error'); return;
+  }
   const res=await fetch('/api/admin/update',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,role})});
   const data=await res.json();
   if (data.success) { showToast('✓ Updated','ok'); loadAdminUsers(); }
@@ -1030,6 +1139,11 @@ function applyFilters() {
     });
   });
   document.querySelectorAll('.edit-gated').forEach(el=>{el.style.display=canEdit?'':'none';});
+  updateFilterCount();
+}
+function clearSearch() {
+  const el = document.getElementById('roster-search');
+  if (el) { el.value=''; applyFilters(); }
 }
 function clearFilters() {
   document.getElementById('roster-search').value='';
@@ -1037,7 +1151,37 @@ function clearFilters() {
   document.getElementById('filter-school').value='';
   document.getElementById('filter-connected').value='';
   document.getElementById('filter-sort').value='';
+  const panel = document.getElementById('filter-panel');
+  if (panel) panel.classList.remove('open');
+  const btn = document.getElementById('filter-toggle-btn');
+  if (btn) { btn.classList.remove('active','has-filters'); }
+  updateFilterCount();
   renderAll();
+}
+function toggleFilterPanel() {
+  const panel = document.getElementById('filter-panel');
+  const btn = document.getElementById('filter-toggle-btn');
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  panel.classList.toggle('open', !isOpen);
+  if (btn) btn.classList.toggle('active', !isOpen);
+}
+function updateFilterCount() {
+  const count = [
+    (document.getElementById('filter-grade')||{}).value,
+    (document.getElementById('filter-school')||{}).value,
+    (document.getElementById('filter-connected')||{}).value,
+    (document.getElementById('filter-sort')||{}).value,
+  ].filter(Boolean).length;
+  const badge = document.getElementById('filter-count');
+  const btn = document.getElementById('filter-toggle-btn');
+  if (badge) { badge.textContent = count||''; badge.classList.toggle('visible', count>0); }
+  if (btn) btn.classList.toggle('has-filters', count>0);
+  const sc = document.getElementById('search-clear');
+  if (sc) {
+    const q = (document.getElementById('roster-search')||{}).value||'';
+    sc.classList.toggle('visible', q.length>0);
+  }
 }
 
 // ── CSV EXPORT ───────────────────────────────────────────────
@@ -1077,84 +1221,14 @@ function renderDashboard() {
   if(!el) return;
   const all=getAllStudents();
   const total=all.length;
-  const hsCount=all.filter(p=>p._sk==='hs').length;
-  const msCount=all.filter(p=>p._sk==='ms').length;
-  const connCount=all.filter(p=>p.connected).length;
-  const notConnCount=all.filter(p=>p._sk==='hs'&&!p.connected).length;
-  const coreCount=all.filter(p=>p._sec==='core').length;
-  const looseCount=all.filter(p=>p._sec==='loose').length;
-  const fringeCount=all.filter(p=>p._sec==='fringe').length;
-  const totalInts=all.reduce((a,p)=>a+(+p.interactionCount||0),0);
+  const cutoff=new Date(Date.now()-90*24*60*60*1000);
+  const active90=all.filter(p=>{
+    if(!p.date) return false;
+    const d=new Date(p.date);
+    return !isNaN(d)&&d>cutoff;
+  }).length;
 
-  // Grade distribution
-  const gradeMap={};
-  all.forEach(p=>{if(p.grade){gradeMap[p.grade]=(gradeMap[p.grade]||0)+1;}});
-  const grades=Object.entries(gradeMap).sort((a,b)=>+a[0]-+b[0]);
-  const maxGrade=Math.max(...grades.map(g=>g[1]),1);
-
-  // School distribution
-  const schoolMap={};
-  all.forEach(p=>{if(p.school){schoolMap[p.school]=(schoolMap[p.school]||0)+1;}});
-  const schools=Object.entries(schoolMap).sort((a,b)=>b[1]-a[1]);
-  const maxSchool=Math.max(...schools.map(s=>s[1]),1);
-
-  // Section distribution
-  const sections=[['Core',coreCount],['Loosely Connected',looseCount],['Fringe',fringeCount]];
-  const maxSec=Math.max(coreCount,looseCount,fringeCount,1);
-
-  el.innerHTML=
-    '<div class="dash-kpis">'+
-      kpi(total,'Total Students')+kpi(hsCount,'High School')+kpi(msCount,'Middle School')+
-      kpi(connCount,'Connected')+kpi(totalInts,'Total Hangouts')+
-    '</div>'+
-    '<div class="dash-grid">'+
-      '<div class="panel">'+
-        '<div class="panel-title">By Grade</div>'+
-        (grades.length?grades.map(([g,c])=>
-          '<div class="dash-bar-row">'+
-            '<div class="dash-bar-label">Grade '+g+'</div>'+
-            '<div class="dash-bar-track"><div class="dash-bar-fill" style="width:'+Math.round(c/maxGrade*100)+'%"></div></div>'+
-            '<div class="dash-bar-val">'+c+'</div>'+
-          '</div>'
-        ).join(''):'<p style="color:var(--muted);font-size:13px">No grade data</p>')+
-      '</div>'+
-      '<div class="panel">'+
-        '<div class="panel-title">By School</div>'+
-        (schools.length?schools.map(([s,c])=>
-          '<div class="dash-bar-row">'+
-            '<div class="dash-bar-label">'+s+'</div>'+
-            '<div class="dash-bar-track"><div class="dash-bar-fill" style="width:'+Math.round(c/maxSchool*100)+'%"></div></div>'+
-            '<div class="dash-bar-val">'+c+'</div>'+
-          '</div>'
-        ).join(''):'<p style="color:var(--muted);font-size:13px">No school data</p>')+
-      '</div>'+
-      '<div class="panel">'+
-        '<div class="panel-title">By Section</div>'+
-        sections.map(([label,c])=>
-          '<div class="dash-bar-row">'+
-            '<div class="dash-bar-label">'+label+'</div>'+
-            '<div class="dash-bar-track"><div class="dash-bar-fill" style="width:'+Math.round(c/maxSec*100)+'%"></div></div>'+
-            '<div class="dash-bar-val">'+c+'</div>'+
-          '</div>'
-        ).join('')+
-      '</div>'+
-      '<div class="panel">'+
-        '<div class="panel-title">Connection Status (HS)</div>'+
-        '<div class="dash-donut-wrap">'+
-          '<div class="dash-donut-chart">'+
-            '<svg viewBox="0 0 36 36" class="dash-donut-svg">'+
-              '<circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface3)" stroke-width="3.8"/>'+
-              '<circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--connected)" stroke-width="3.8" stroke-dasharray="'+(hsCount?Math.round(connCount/hsCount*100):0)+' '+(hsCount?100-Math.round(connCount/hsCount*100):100)+'" stroke-dashoffset="25" stroke-linecap="round"/>'+
-            '</svg>'+
-            '<div class="dash-donut-center">'+(hsCount?Math.round(connCount/hsCount*100):0)+'%</div>'+
-          '</div>'+
-          '<div class="dash-donut-legend">'+
-            '<div class="dash-legend-item"><span class="dash-legend-dot" style="background:var(--connected)"></span>Connected: '+connCount+'</div>'+
-            '<div class="dash-legend-item"><span class="dash-legend-dot" style="background:var(--not-connected)"></span>Not Connected: '+notConnCount+'</div>'+
-          '</div>'+
-        '</div>'+
-      '</div>'+
-    '</div>';
+  el.innerHTML='<div class="dash-kpis-simple">'+kpi(total,'Total Students')+kpi(active90,'Active Last 90 Days')+'</div>';
 }
 
 // ── TOAST ─────────────────────────────────────────────────────
@@ -1175,8 +1249,105 @@ function v(id) { return (document.getElementById(id)||{}).value?.trim()||''; }
 function sv(id,val) { const el=document.getElementById(id); if(el) el.value=val; }
 function setMsg(el,msg,type) { el.textContent=msg; el.className='auth-msg '+(type||''); }
 
+// ── PHOTO CROP / COMPRESS ─────────────────────────────────────
+let cropImg=null, cropZoom=1, cropOffX=0, cropOffY=0, cropIsDragging=false, cropDragStartX=0, cropDragStartY=0;
+let cropCallback=null, cropPhotoContext=null;
+
+function triggerPhotoUpload(ctx, callback) {
+  cropPhotoContext=ctx;
+  cropCallback=callback;
+  const input=document.getElementById('shared-photo-input');
+  if(input){input.value='';input.click();}
+}
+
+function onSharedPhotoSelected(input) {
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      cropImg=img; cropZoom=1; cropOffX=0; cropOffY=0;
+      openModal('crop-modal');
+      drawCrop();
+      initCropDrag();
+      document.getElementById('crop-zoom').value=1;
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function drawCrop() {
+  const canvas=document.getElementById('crop-canvas');
+  if(!canvas||!cropImg) return;
+  const SIZE=300;
+  canvas.width=SIZE; canvas.height=SIZE;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,SIZE,SIZE);
+  const base=Math.min(cropImg.width,cropImg.height);
+  const scale=(SIZE/base)*cropZoom;
+  const w=cropImg.width*scale, h=cropImg.height*scale;
+  ctx.drawImage(cropImg, (SIZE-w)/2+cropOffX, (SIZE-h)/2+cropOffY, w, h);
+}
+
+function initCropDrag() {
+  const wrap=document.querySelector('.crop-canvas-wrap');
+  if(!wrap||wrap._cropDragInit) return;
+  wrap._cropDragInit=true;
+  wrap.addEventListener('mousedown',e=>{cropIsDragging=true;cropDragStartX=e.clientX-cropOffX;cropDragStartY=e.clientY-cropOffY;});
+  window.addEventListener('mousemove',e=>{if(!cropIsDragging)return;cropOffX=e.clientX-cropDragStartX;cropOffY=e.clientY-cropDragStartY;drawCrop();});
+  window.addEventListener('mouseup',()=>{cropIsDragging=false;});
+  wrap.addEventListener('touchstart',e=>{const t=e.touches[0];cropIsDragging=true;cropDragStartX=t.clientX-cropOffX;cropDragStartY=t.clientY-cropOffY;},{passive:true});
+  wrap.addEventListener('touchmove',e=>{if(!cropIsDragging)return;const t=e.touches[0];cropOffX=t.clientX-cropDragStartX;cropOffY=t.clientY-cropDragStartY;drawCrop();},{passive:true});
+  wrap.addEventListener('touchend',()=>{cropIsDragging=false;},{passive:true});
+}
+
+function onCropZoom(val) {
+  cropZoom=+val; drawCrop();
+}
+
+function closeCropModal() {
+  closeModal('crop-modal');
+  cropCallback=null; cropPhotoContext=null; cropImg=null;
+}
+
+function saveCrop() {
+  if(!cropImg) return;
+  const src=document.getElementById('crop-canvas');
+  const out=document.createElement('canvas');
+  const SIZE=800; out.width=SIZE; out.height=SIZE;
+  out.getContext('2d').drawImage(src,0,0,SIZE,SIZE);
+  out.toBlob(blob=>{
+    closeModal('crop-modal');
+    if(cropCallback) cropCallback(blob);
+  },'image/jpeg',0.85);
+}
+
+async function uploadCroppedBlob(blob, type) {
+  showToast('Uploading…');
+  const fd=new FormData(); fd.append('file',blob,'photo.jpg'); fd.append('type',type);
+  const res=await fetch('/api/upload-photo',{method:'POST',body:fd});
+  return res.json();
+}
+
 // ── BOOT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  // Theme
+  initTheme();
+
+  // Auto-year
+  const yr = new Date().getFullYear();
+  ['year-gate','year-sub','year-footer','year-auth'].forEach(id => {
+    const el=document.getElementById(id); if(el) el.textContent=yr;
+  });
+  ['year-nav','year-student-nav'].forEach(id => {
+    const el=document.getElementById(id); if(el) el.textContent='\u00a0'+yr;
+  });
+
+  // Swipe back
+  initSwipeBack();
+
   // Wire up modal close-on-backdrop for ALL modals
   document.querySelectorAll('.modal-overlay').forEach(el => {
     el.addEventListener('click', e => { if(e.target===el) closeModal(el.id); });
