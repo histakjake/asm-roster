@@ -1216,19 +1216,15 @@ function printRoster() {
 }
 
 // ── DASHBOARD ────────────────────────────────────────────────
-function renderDashboard() {
+async function renderDashboard() {
   const el=document.getElementById('dashboard-content');
   if(!el) return;
+  el.innerHTML='<div class="loader"><div class="loader-ring"></div></div>';
   const all=getAllStudents();
   const total=all.length;
-  const cutoff=new Date(Date.now()-90*24*60*60*1000);
-  const active90=all.filter(p=>{
-    if(!p.date) return false;
-    const d=new Date(p.date);
-    return !isNaN(d)&&d>cutoff;
-  }).length;
-
-  el.innerHTML='<div class="dash-kpis-simple">'+kpi(total,'Total Students')+kpi(active90,'Active Last 90 Days')+'</div>';
+  let totalHangouts=0;
+  try{const r=await fetch('/api/activity/stats');const d=await r.json();totalHangouts=d.totalInteractions||0;}catch(e){}
+  el.innerHTML='<div class="dash-kpis-simple">'+kpi(total,'Total Students')+kpi(totalHangouts,'Hangouts Logged')+'</div>';
 }
 
 // ── TOAST ─────────────────────────────────────────────────────
