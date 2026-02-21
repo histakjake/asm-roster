@@ -56,6 +56,7 @@ export const HTML_BODY = `
       <div class="nav-logo">ASM<span>&nbsp;2026</span></div>
       <div class="nav-pills">
         <button class="nav-pill active" onclick="switchMainNav('roster',this)">Roster</button>
+        <button class="nav-pill" onclick="switchMainNav('dashboard',this)">Dashboard</button>
         <button class="nav-pill" onclick="switchMainNav('activity',this)">Activity</button>
         <button class="nav-pill" onclick="switchMainNav('dump',this)">Brain Dump</button>
       </div>
@@ -68,6 +69,7 @@ export const HTML_BODY = `
   <div class="mobile-nav-overlay" id="mobile-nav-overlay" onclick="closeMobileNav()"></div>
   <div class="mobile-nav-drawer" id="mobile-nav-drawer">
     <button class="mob-nav-pill" id="mob-pill-roster"   onclick="switchMainNav('roster',this);closeMobileNav()">Roster</button>
+    <button class="mob-nav-pill" id="mob-pill-dashboard" onclick="switchMainNav('dashboard',this);closeMobileNav()">Dashboard</button>
     <button class="mob-nav-pill" id="mob-pill-activity" onclick="switchMainNav('activity',this);closeMobileNav()">Activity</button>
     <button class="mob-nav-pill" id="mob-pill-dump"     onclick="switchMainNav('dump',this);closeMobileNav()">Brain Dump</button>
   </div>
@@ -92,11 +94,40 @@ export const HTML_BODY = `
 
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
-        <input class="search-input" id="roster-search" placeholder="Search students…" oninput="filterRoster(this.value)">
+        <input class="search-input" id="roster-search" placeholder="Search students…" oninput="applyFilters()">
+      </div>
+      <div class="filter-bar" id="filter-bar">
+        <div class="filter-group">
+          <select class="filter-select" id="filter-grade" onchange="applyFilters()">
+            <option value="">All Grades</option>
+          </select>
+          <select class="filter-select" id="filter-school" onchange="applyFilters()">
+            <option value="">All Schools</option>
+          </select>
+          <select class="filter-select" id="filter-connected" onchange="applyFilters()">
+            <option value="">All Status</option>
+            <option value="connected">Connected</option>
+            <option value="not-connected">Not Connected</option>
+          </select>
+          <select class="filter-select" id="filter-sort" onchange="applyFilters()">
+            <option value="">Default Order</option>
+            <option value="name-asc">Name A → Z</option>
+            <option value="name-desc">Name Z → A</option>
+            <option value="grade-asc">Grade Low → High</option>
+            <option value="grade-desc">Grade High → Low</option>
+            <option value="interactions-desc">Most Interactions</option>
+            <option value="interactions-asc">Fewest Interactions</option>
+          </select>
+        </div>
+        <div class="filter-actions">
+          <button class="filter-action-btn" onclick="clearFilters()" title="Clear filters">Clear</button>
+          <button class="filter-action-btn" onclick="exportCSV()" title="Download CSV">Export CSV</button>
+          <button class="filter-action-btn" onclick="printRoster()" title="Print roster">Print</button>
+        </div>
       </div>
 
       <!-- HS -->
-      <div id="tab-hs" class="tab-panel active">
+      <div id="tab-hs" class="tab-panel active" data-print-title="High School">
         <div class="stats" id="hs-stats"></div>
         <div class="section-header">
           <div class="section-label">⚡ Core</div>
@@ -118,7 +149,7 @@ export const HTML_BODY = `
       </div>
 
       <!-- MS -->
-      <div id="tab-ms" class="tab-panel">
+      <div id="tab-ms" class="tab-panel" data-print-title="Middle School">
         <div class="stats" id="ms-stats"></div>
         <div class="section-header">
           <div class="section-label">⚡ Core</div>
@@ -140,6 +171,19 @@ export const HTML_BODY = `
       </div>
 
       <footer>Worship Grow Go · Anthem Students 2026</footer>
+    </div>
+  </div>
+
+  <!-- DASHBOARD PANEL -->
+  <div id="nav-dashboard" class="nav-panel" style="display:none">
+    <div class="container">
+      <header>
+        <div class="logo-line" style="font-size:clamp(40px,8vw,72px)">Stats <span>Dashboard</span></div>
+        <div class="subtitle">Roster at a glance</div>
+      </header>
+      <div id="dashboard-content">
+        <div class="loader"><div class="loader-ring"></div></div>
+      </div>
     </div>
   </div>
 
@@ -266,9 +310,19 @@ export const HTML_BODY = `
     <div class="field"><label>Full Name *</label><input type="text" id="ef-name" placeholder="First Last"></div>
     <div class="field-row">
       <div class="field"><label>Grade</label><input type="text" id="ef-grade" placeholder="9"></div>
-      <div class="field"><label>Birthday</label><input type="text" id="ef-birthday" placeholder="MM/DD/YYYY"></div>
+      <div class="field"><label>Birthday</label><input type="date" id="ef-birthday"></div>
     </div>
-    <div class="field"><label>School</label><input type="text" id="ef-school" placeholder="School name"></div>
+    <div class="field-row">
+      <div class="field"><label>School</label><input type="text" id="ef-school" placeholder="School name"></div>
+      <div class="field" id="ef-section-field">
+        <label>Section</label>
+        <select id="ef-section">
+          <option value="core">Core</option>
+          <option value="loose">Loosely Connected</option>
+          <option value="fringe">Fringe</option>
+        </select>
+      </div>
+    </div>
     <div class="field"><label>Interest / Sport</label><input type="text" id="ef-interest" placeholder="Soccer, Guitar…"></div>
     <div class="field"><label>Primary Goal</label><input type="text" id="ef-primary-goal" placeholder="e.g. Get plugged into a community group"></div>
     <div class="field"><label>Notes</label><input type="text" id="ef-notes" placeholder="Optional notes"></div>
@@ -355,6 +409,19 @@ export const HTML_BODY = `
     <div class="modal-actions">
       <button class="btn-danger" onclick="confirmDeleteInteraction()">Delete</button>
       <button class="btn-secondary" onclick="closeModal('confirm-delete-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE STUDENT -->
+<div class="modal-overlay" id="confirm-student-delete-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('confirm-student-delete-modal')">✕</button>
+    <div class="modal-title">Remove Student?</div>
+    <div class="modal-sub">Are you sure you want to remove <strong id="confirm-student-delete-name"></strong> from the roster? This cannot be undone.</div>
+    <div class="modal-actions">
+      <button class="btn-danger" onclick="doConfirmDeleteStudent()">Remove Student</button>
+      <button class="btn-secondary" onclick="closeModal('confirm-student-delete-modal')">Cancel</button>
     </div>
   </div>
 </div>

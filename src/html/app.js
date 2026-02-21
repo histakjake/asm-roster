@@ -79,11 +79,12 @@ function switchMainNav(name, btn) {
   document.querySelectorAll('.nav-pill').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   // Sync mobile drawer active state
-  ['roster','activity','dump'].forEach(n => {
+  ['roster','dashboard','activity','dump'].forEach(n => {
     const mb = document.getElementById('mob-pill-'+n);
     if (mb) mb.classList.toggle('active', n === name);
   });
   if (name==='activity') loadActivityFeed();
+  if (name==='dashboard') renderDashboard();
 }
 
 function toggleMobileNav() {
@@ -265,6 +266,7 @@ function renderAll() {
   document.querySelectorAll('.edit-gated').forEach(el => {
     el.style.display=canEdit?'':'none';
   });
+  populateFilterDropdowns();
 }
 
 function renderStats(sk) {
@@ -330,20 +332,7 @@ function makeCard(person, idx, sk, section) {
   return card;
 }
 
-// ── SEARCH ───────────────────────────────────────────────────
-function filterRoster(q) {
-  q = q.toLowerCase().trim();
-  ['hs','ms'].forEach(sk => {
-    ['core','loose','fringe'].forEach(sec => {
-      const el = document.getElementById(sk+'-'+sec+'-grid');
-      if (!el) return;
-      el.querySelectorAll('.card').forEach(card => {
-        const text = card.textContent.toLowerCase();
-        card.style.display = (!q || text.includes(q)) ? '' : 'none';
-      });
-    });
-  });
-}
+// ── SEARCH (replaced by applyFilters below) ─────────────────
 
 // ── HS/MS TAB ────────────────────────────────────────────────
 function switchTab(sk, btn) {
@@ -464,9 +453,11 @@ function openEditModal(sk, section, index) {
   sv('ef-name',p.name||''); sv('ef-grade',p.grade||''); sv('ef-school',p.school||'');
   sv('ef-birthday',p.birthday||''); sv('ef-interest',p.interest||''); sv('ef-notes',p.notes||'');
   sv('ef-photoUrl',p.photoUrl||''); sv('ef-primary-goal',p.primaryGoal||'');
+  sv('ef-section',section);
   setConnected(p.connected||false);
   updateEditPhotoPreview();
   document.getElementById('ef-connected-field').style.display=sk==='hs'?'block':'none';
+  document.getElementById('ef-section-field').style.display='block';
   document.getElementById('ef-delete-btn').style.display='inline-block';
   document.getElementById('ef-save-btn').textContent='Save Changes';
   openModal('edit-modal');
@@ -478,8 +469,10 @@ function openAddModal(sk, section) {
   document.getElementById('edit-modal-title').textContent='Add Student';
   document.getElementById('edit-modal-sub').textContent=(sk==='hs'?'High School':'Middle School')+' · '+{core:'Core',loose:'Loosely Connected',fringe:'Fringe'}[section];
   ['ef-name','ef-grade','ef-school','ef-birthday','ef-interest','ef-notes','ef-photoUrl','ef-primary-goal'].forEach(id=>sv(id,''));
+  sv('ef-section',section);
   setConnected(false); updateEditPhotoPreview();
   document.getElementById('ef-connected-field').style.display=sk==='hs'?'block':'none';
+  document.getElementById('ef-section-field').style.display='none';
   document.getElementById('ef-delete-btn').style.display='none';
   document.getElementById('ef-save-btn').textContent='Add Student';
   openModal('edit-modal');
@@ -517,37 +510,57 @@ async function saveEdit() {
   const name=v('ef-name');
   if (!name) { showToast('Name is required','error'); return; }
   const btn=document.getElementById('ef-save-btn');
+  const origText=btn.textContent;
   btn.disabled=true; btn.textContent='Saving…';
+  const newSection=v('ef-section')||editState.section;
   const fields={
     name, grade:v('ef-grade'), school:v('ef-school'), birthday:v('ef-birthday'),
     interest:v('ef-interest'), notes:v('ef-notes'), photoUrl:v('ef-photoUrl'),
     primaryGoal:v('ef-primary-goal'), connected:connectedVal,
   };
   const {mode,sk,section,index}=editState;
-  if (mode==='edit') {
-    Object.assign(DATA[sk][section][index], fields);
-    const params=new URLSearchParams({action:'update',payload:JSON.stringify({sheet:sk,rowIndex:DATA[sk][section][index].rowIndex,fields})});
-    const res=await fetch('/api/sheet/write?'+params);
-    const data=await res.json();
-    showToast(data.error ? 'Saved locally' : '✓ Saved', data.error?'error':'ok');
-  } else {
-    DATA[sk][section].push({...fields});
-    const params=new URLSearchParams({action:'add',payload:JSON.stringify({sheet:sk,section,person:fields})});
-    const res=await fetch('/api/sheet/write?'+params);
-    const data=await res.json();
-    if (data.newRowIndex!==undefined) DATA[sk][section][DATA[sk][section].length-1].rowIndex=data.newRowIndex;
-    showToast(data.error?'Added locally':'✓ Student added',data.error?'error':'ok');
+  try {
+    if (mode==='edit') {
+      // Handle section change: update the section field on the backend
+      const updatedFields={...fields,section:newSection};
+      Object.assign(DATA[sk][section][index], fields);
+      if(newSection!==section){
+        // Move student to new section locally
+        const person=DATA[sk][section].splice(index,1)[0];
+        Object.assign(person,fields);
+        DATA[sk][newSection].push(person);
+      }
+      const params=new URLSearchParams({action:'update',payload:JSON.stringify({sheet:sk,rowIndex:(DATA[sk][newSection!==section?newSection:section].find(p=>p.name===name)||{}).rowIndex||DATA[sk][section][index]?.rowIndex,fields:updatedFields})});
+      const res=await fetch('/api/sheet/write?'+params);
+      const data=await res.json();
+      showToast(data.error ? 'Saved locally' : (newSection!==section?'✓ Moved to '+{core:'Core',loose:'Loosely Connected',fringe:'Fringe'}[newSection]:'✓ Saved'), data.error?'error':'ok');
+    } else {
+      DATA[sk][section].push({...fields});
+      const params=new URLSearchParams({action:'add',payload:JSON.stringify({sheet:sk,section,person:fields})});
+      const res=await fetch('/api/sheet/write?'+params);
+      const data=await res.json();
+      if (data.newRowIndex!==undefined) DATA[sk][section][DATA[sk][section].length-1].rowIndex=data.newRowIndex;
+      showToast(data.error?'Added locally':'✓ Student added',data.error?'error':'ok');
+    }
+  } catch(e) {
+    showToast('Network error — changes saved locally','error');
   }
-  renderAll(); closeEditModal(); btn.disabled=false;
+  renderAll(); closeEditModal(); btn.disabled=false; btn.textContent=origText;
 }
 
-async function confirmDelete() {
+function confirmDelete() {
   const {sk,section,index}=editState;
   const name=DATA[sk][section][index].name;
-  if (!confirm('Remove '+name+' from the roster?')) return;
+  document.getElementById('confirm-student-delete-name').textContent=name;
+  openModal('confirm-student-delete-modal');
+}
+async function doConfirmDeleteStudent() {
+  const {sk,section,index}=editState;
+  const name=DATA[sk][section][index].name;
   const person=DATA[sk][section].splice(index,1)[0];
   const params=new URLSearchParams({action:'delete',payload:JSON.stringify({sheet:sk,rowIndex:person.rowIndex})});
   await fetch('/api/sheet/write?'+params);
+  closeModal('confirm-student-delete-modal');
   renderAll(); closeEditModal(); showToast('Removed '+name,'ok');
 }
 
@@ -716,19 +729,26 @@ function closeInteractionModal() { closeModal('interaction-modal'); }
 async function saveInteraction() {
   const leader=v('int-leader'), date=v('int-date'), summary=v('int-summary');
   if (!leader||!summary) { showToast('Leader name and summary required','error'); return; }
+  const btn=document.querySelector('#interaction-modal .btn-save');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
   const {sk,section,index,studentName}=interactionKey;
   const person=DATA[sk][section][index];
   const interaction={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),leader,date,summary,createdAt:new Date().toISOString(),leaderEmail:currentUser?currentUser.email:''};
-  const res=await fetch('/api/student/interactions',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({sk,section,index,rowIndex:person.rowIndex,studentName,interaction}),
-  });
-  const data=await res.json();
-  if (data.success) {
-    closeInteractionModal();
-    showToast('✓ Hangout logged!','ok');
-    if (currentStudentKey) renderStudentDetail(currentStudentKey.sk,currentStudentKey.section,currentStudentKey.index);
-  } else showToast(data.error||'Failed','error');
+  try {
+    const res=await fetch('/api/student/interactions',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sk,section,index,rowIndex:person.rowIndex,studentName,interaction}),
+    });
+    const data=await res.json();
+    if (data.success) {
+      closeInteractionModal();
+      showToast('✓ Hangout logged!','ok');
+      if (currentStudentKey) renderStudentDetail(currentStudentKey.sk,currentStudentKey.section,currentStudentKey.index);
+    } else showToast(data.error||'Failed','error');
+  } catch(e) {
+    showToast('Network error — try again','error');
+  }
+  if(btn){btn.disabled=false;btn.textContent='Log It ✓';}
 }
 
 // ── INTERACTION EDIT / DELETE ─────────────────────────────────
@@ -944,6 +964,199 @@ async function updateUser(email,role) {
   else showToast(data.error||'Failed','error');
 }
 
+// ── FILTER / SORT ────────────────────────────────────────────
+function getAllStudents() {
+  const all=[];
+  for (const sk of ['hs','ms']) for (const sec of ['core','loose','fringe']) {
+    (DATA[sk][sec]||[]).forEach((p,i)=>all.push({...p,_sk:sk,_sec:sec,_idx:i}));
+  }
+  return all;
+}
+function populateFilterDropdowns() {
+  const all=getAllStudents();
+  const grades=[...new Set(all.map(p=>p.grade).filter(Boolean))].sort((a,b)=>+a-+b);
+  const schools=[...new Set(all.map(p=>p.school).filter(Boolean))].sort();
+  const gradeEl=document.getElementById('filter-grade');
+  const schoolEl=document.getElementById('filter-school');
+  if(gradeEl){
+    const cur=gradeEl.value;
+    gradeEl.innerHTML='<option value="">All Grades</option>'+grades.map(g=>'<option value="'+g+'">Grade '+g+'</option>').join('');
+    gradeEl.value=cur;
+  }
+  if(schoolEl){
+    const cur=schoolEl.value;
+    schoolEl.innerHTML='<option value="">All Schools</option>'+schools.map(s=>'<option value="'+s+'">'+s+'</option>').join('');
+    schoolEl.value=cur;
+  }
+}
+function applyFilters() {
+  const q=(document.getElementById('roster-search').value||'').toLowerCase().trim();
+  const gradeF=document.getElementById('filter-grade').value;
+  const schoolF=document.getElementById('filter-school').value;
+  const connF=document.getElementById('filter-connected').value;
+  const sortF=document.getElementById('filter-sort').value;
+  ['hs','ms'].forEach(sk => {
+    ['core','loose','fringe'].forEach(sec => {
+      const gridEl=document.getElementById(sk+'-'+sec+'-grid');
+      if(!gridEl) return;
+      let items=DATA[sk][sec]||[];
+      let filtered=items.map((p,i)=>({p,i})).filter(({p})=>{
+        if(q && !(p.name||'').toLowerCase().includes(q) && !(p.school||'').toLowerCase().includes(q) && !(p.interest||'').toLowerCase().includes(q) && !(p.grade||'').toLowerCase().includes(q)) return false;
+        if(gradeF && p.grade!==gradeF) return false;
+        if(schoolF && p.school!==schoolF) return false;
+        if(connF==='connected' && !p.connected) return false;
+        if(connF==='not-connected' && p.connected) return false;
+        return true;
+      });
+      if(sortF) {
+        filtered.sort((a,b)=>{
+          switch(sortF){
+            case 'name-asc': return (a.p.name||'').localeCompare(b.p.name||'');
+            case 'name-desc': return (b.p.name||'').localeCompare(a.p.name||'');
+            case 'grade-asc': return (+a.p.grade||99)-(+b.p.grade||99);
+            case 'grade-desc': return (+b.p.grade||0)-(+a.p.grade||0);
+            case 'interactions-desc': return (+b.p.interactionCount||0)-(+a.p.interactionCount||0);
+            case 'interactions-asc': return (+a.p.interactionCount||0)-(+b.p.interactionCount||0);
+            default: return 0;
+          }
+        });
+      }
+      gridEl.innerHTML='';
+      if(!filtered.length){
+        gridEl.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><p>No students match your filters</p></div>';
+        return;
+      }
+      filtered.forEach(({p,i})=>gridEl.appendChild(makeCard(p,i,sk,sec)));
+    });
+  });
+  document.querySelectorAll('.edit-gated').forEach(el=>{el.style.display=canEdit?'':'none';});
+}
+function clearFilters() {
+  document.getElementById('roster-search').value='';
+  document.getElementById('filter-grade').value='';
+  document.getElementById('filter-school').value='';
+  document.getElementById('filter-connected').value='';
+  document.getElementById('filter-sort').value='';
+  renderAll();
+}
+
+// ── CSV EXPORT ───────────────────────────────────────────────
+function exportCSV() {
+  const rows=[['Name','Grade','School','Birthday','Interest','Section','Level','Connected','Interaction Count','Primary Goal','Notes']];
+  for(const sk of ['hs','ms']){
+    for(const sec of ['core','loose','fringe']){
+      (DATA[sk][sec]||[]).forEach(p=>{
+        rows.push([
+          p.name||'', p.grade||'', p.school||'', p.birthday||'', p.interest||'',
+          {core:'Core',loose:'Loosely Connected',fringe:'Fringe'}[sec],
+          sk==='hs'?'High School':'Middle School',
+          sk==='hs'?(p.connected?'Yes':'No'):'N/A',
+          p.interactionCount||'0', p.primaryGoal||'', (p.notes||'').replace(/[\\n\\r]+/g,' ')
+        ]);
+      });
+    }
+  }
+  const csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const link=document.createElement('a');
+  link.href=URL.createObjectURL(blob);
+  link.download='asm-roster-'+new Date().toISOString().slice(0,10)+'.csv';
+  link.click();
+  URL.revokeObjectURL(link.href);
+  showToast('CSV downloaded','ok');
+}
+
+// ── PRINT ────────────────────────────────────────────────────
+function printRoster() {
+  window.print();
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────
+function renderDashboard() {
+  const el=document.getElementById('dashboard-content');
+  if(!el) return;
+  const all=getAllStudents();
+  const total=all.length;
+  const hsCount=all.filter(p=>p._sk==='hs').length;
+  const msCount=all.filter(p=>p._sk==='ms').length;
+  const connCount=all.filter(p=>p.connected).length;
+  const notConnCount=all.filter(p=>p._sk==='hs'&&!p.connected).length;
+  const coreCount=all.filter(p=>p._sec==='core').length;
+  const looseCount=all.filter(p=>p._sec==='loose').length;
+  const fringeCount=all.filter(p=>p._sec==='fringe').length;
+  const totalInts=all.reduce((a,p)=>a+(+p.interactionCount||0),0);
+
+  // Grade distribution
+  const gradeMap={};
+  all.forEach(p=>{if(p.grade){gradeMap[p.grade]=(gradeMap[p.grade]||0)+1;}});
+  const grades=Object.entries(gradeMap).sort((a,b)=>+a[0]-+b[0]);
+  const maxGrade=Math.max(...grades.map(g=>g[1]),1);
+
+  // School distribution
+  const schoolMap={};
+  all.forEach(p=>{if(p.school){schoolMap[p.school]=(schoolMap[p.school]||0)+1;}});
+  const schools=Object.entries(schoolMap).sort((a,b)=>b[1]-a[1]);
+  const maxSchool=Math.max(...schools.map(s=>s[1]),1);
+
+  // Section distribution
+  const sections=[['Core',coreCount],['Loosely Connected',looseCount],['Fringe',fringeCount]];
+  const maxSec=Math.max(coreCount,looseCount,fringeCount,1);
+
+  el.innerHTML=
+    '<div class="dash-kpis">'+
+      kpi(total,'Total Students')+kpi(hsCount,'High School')+kpi(msCount,'Middle School')+
+      kpi(connCount,'Connected')+kpi(totalInts,'Total Hangouts')+
+    '</div>'+
+    '<div class="dash-grid">'+
+      '<div class="panel">'+
+        '<div class="panel-title">By Grade</div>'+
+        (grades.length?grades.map(([g,c])=>
+          '<div class="dash-bar-row">'+
+            '<div class="dash-bar-label">Grade '+g+'</div>'+
+            '<div class="dash-bar-track"><div class="dash-bar-fill" style="width:'+Math.round(c/maxGrade*100)+'%"></div></div>'+
+            '<div class="dash-bar-val">'+c+'</div>'+
+          '</div>'
+        ).join(''):'<p style="color:var(--muted);font-size:13px">No grade data</p>')+
+      '</div>'+
+      '<div class="panel">'+
+        '<div class="panel-title">By School</div>'+
+        (schools.length?schools.map(([s,c])=>
+          '<div class="dash-bar-row">'+
+            '<div class="dash-bar-label">'+s+'</div>'+
+            '<div class="dash-bar-track"><div class="dash-bar-fill" style="width:'+Math.round(c/maxSchool*100)+'%"></div></div>'+
+            '<div class="dash-bar-val">'+c+'</div>'+
+          '</div>'
+        ).join(''):'<p style="color:var(--muted);font-size:13px">No school data</p>')+
+      '</div>'+
+      '<div class="panel">'+
+        '<div class="panel-title">By Section</div>'+
+        sections.map(([label,c])=>
+          '<div class="dash-bar-row">'+
+            '<div class="dash-bar-label">'+label+'</div>'+
+            '<div class="dash-bar-track"><div class="dash-bar-fill" style="width:'+Math.round(c/maxSec*100)+'%"></div></div>'+
+            '<div class="dash-bar-val">'+c+'</div>'+
+          '</div>'
+        ).join('')+
+      '</div>'+
+      '<div class="panel">'+
+        '<div class="panel-title">Connection Status (HS)</div>'+
+        '<div class="dash-donut-wrap">'+
+          '<div class="dash-donut-chart">'+
+            '<svg viewBox="0 0 36 36" class="dash-donut-svg">'+
+              '<circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface3)" stroke-width="3.8"/>'+
+              '<circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--connected)" stroke-width="3.8" stroke-dasharray="'+(hsCount?Math.round(connCount/hsCount*100):0)+' '+(hsCount?100-Math.round(connCount/hsCount*100):100)+'" stroke-dashoffset="25" stroke-linecap="round"/>'+
+            '</svg>'+
+            '<div class="dash-donut-center">'+(hsCount?Math.round(connCount/hsCount*100):0)+'%</div>'+
+          '</div>'+
+          '<div class="dash-donut-legend">'+
+            '<div class="dash-legend-item"><span class="dash-legend-dot" style="background:var(--connected)"></span>Connected: '+connCount+'</div>'+
+            '<div class="dash-legend-item"><span class="dash-legend-dot" style="background:var(--not-connected)"></span>Not Connected: '+notConnCount+'</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+}
+
 // ── TOAST ─────────────────────────────────────────────────────
 function showToast(msg, type='') {
   const el=document.getElementById('toast');
@@ -964,14 +1177,23 @@ function setMsg(el,msg,type) { el.textContent=msg; el.className='auth-msg '+(typ
 
 // ── BOOT ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // Wire up modal close-on-backdrop
-  ['auth-modal','edit-modal','profile-modal','interaction-modal'].forEach(id => {
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('click',e=>{if(e.target===el)closeModal(id);});
+  // Wire up modal close-on-backdrop for ALL modals
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if(e.target===el) closeModal(el.id); });
   });
   // Wire up ef-name input preview
   const efName=document.getElementById('ef-name');
   if(efName) efName.addEventListener('input',updateEditPhotoPreview);
+  // Enter key to add goals
+  const goalInput=document.getElementById('new-goal-input');
+  if(goalInput) goalInput.addEventListener('keydown', e => { if(e.key==='Enter'){e.preventDefault();addGoal();} });
+  // Escape key to close topmost modal
+  document.addEventListener('keydown', e => {
+    if(e.key==='Escape'){
+      const open=document.querySelector('.modal-overlay.open');
+      if(open) closeModal(open.id);
+    }
+  });
 
   initGate();
 });
