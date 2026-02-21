@@ -285,6 +285,310 @@ export const HTML_BODY = `
   </div>
 </div>
 
+<!-- ════ SETTINGS ═════════════════════════════════════════════ -->
+<div id="screen-settings" class="screen">
+  <nav class="top-nav">
+    <div class="nav-inner">
+      <div class="nav-logo">Settings</div>
+      <div class="settings-topbar-info">
+        <span class="settings-ministry-name" id="settings-topbar-name"></span>
+      </div>
+      <div class="nav-right">
+        <button class="nav-btn" onclick="closeSettings()">← Back</button>
+        <button class="nav-btn primary" id="settings-save-topbar" onclick="saveSettings()" disabled>Save</button>
+      </div>
+    </div>
+  </nav>
+  <div class="settings-layout">
+    <aside class="settings-sidebar">
+      <button class="settings-tab active" data-tab="general" onclick="switchSettingsTab('general',this)">
+        <span class="stab-icon">⚙️</span><span class="stab-label">General</span>
+      </button>
+      <button class="settings-tab" data-tab="tracking" onclick="switchSettingsTab('tracking',this)">
+        <span class="stab-icon">📊</span><span class="stab-label">Tracking</span>
+      </button>
+      <button class="settings-tab" data-tab="access" onclick="switchSettingsTab('access',this)">
+        <span class="stab-icon">🔐</span><span class="stab-label">Access</span>
+      </button>
+      <button class="settings-tab" data-tab="appearance" onclick="switchSettingsTab('appearance',this)">
+        <span class="stab-icon">🎨</span><span class="stab-label">Appearance</span>
+      </button>
+    </aside>
+    <main class="settings-content">
+
+      <!-- ── GENERAL TAB ─────────────────────────────────────── -->
+      <div class="settings-pane active" id="settings-general">
+        <div class="settings-card">
+          <div class="scard-title">Ministry Info</div>
+          <div class="scard-row">
+            <div class="field"><label>Ministry Name</label><input type="text" id="s-ministry-name" placeholder="e.g. Anthem Students" oninput="markSettingsDirty()"></div>
+          </div>
+          <div class="scard-row">
+            <div class="field"><label>Campus / Location</label><input type="text" id="s-campus" placeholder="e.g. Thousand Oaks" oninput="markSettingsDirty()"></div>
+          </div>
+          <div class="scard-row">
+            <div class="s-toggle-row">
+              <div class="s-toggle-info">
+                <div class="s-toggle-title">Logo</div>
+                <div class="s-toggle-desc">Display a custom logo on sign-in, nav bar, and PWA icon.</div>
+              </div>
+              <div class="s-toggle" id="s-logo-toggle" onclick="toggleSettingsSwitch('s-logo-toggle')"><div class="s-toggle-knob"></div></div>
+            </div>
+            <div class="s-logo-upload" id="s-logo-upload-area" style="display:none">
+              <div class="s-logo-preview" id="s-logo-preview">
+                <span class="s-logo-placeholder">No logo</span>
+                <img id="s-logo-img" src="" alt="" style="display:none" onload="this.style.display='block';this.previousElementSibling.style.display='none'">
+              </div>
+              <div class="s-logo-actions">
+                <label class="upload-label" for="s-logo-file-input">Upload Logo</label>
+                <input type="file" id="s-logo-file-input" accept="image/*" onchange="uploadSettingsLogo(this)">
+                <button class="btn-secondary" onclick="removeSettingsLogo()" style="padding:6px 12px;font-size:11px">Remove</button>
+              </div>
+            </div>
+          </div>
+          <div class="scard-row">
+            <div class="field">
+              <label>Grades Served</label>
+              <div class="s-helper">Select which grades your ministry serves. These control filters, labels, and grade-based views.</div>
+              <div class="s-chips" id="s-grades-chips"></div>
+            </div>
+          </div>
+          <div class="scard-row" id="s-grade-tabs-config">
+            <div class="field">
+              <label>Grade Tab Assignment</label>
+              <div class="s-helper">Assign grades to tabs. Drag chips between the two groups.</div>
+              <div class="s-grade-tabs-wrap">
+                <div class="s-grade-tab-group">
+                  <div class="s-grade-tab-label" id="s-hs-tab-label">High School</div>
+                  <input type="text" class="s-grade-tab-name" id="s-hs-label" placeholder="Tab label" oninput="markSettingsDirty()">
+                  <div class="s-chips" id="s-hs-grades"></div>
+                </div>
+                <div class="s-grade-tab-group">
+                  <div class="s-grade-tab-label" id="s-ms-tab-label">Middle School</div>
+                  <input type="text" class="s-grade-tab-name" id="s-ms-label" placeholder="Tab label" oninput="markSettingsDirty()">
+                  <div class="s-chips" id="s-ms-grades"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="scard-title">Default Week</div>
+          <div class="scard-row">
+            <div class="field-row">
+              <div class="field">
+                <label>Primary Meeting Day</label>
+                <select id="s-meeting-day" onchange="markSettingsDirty()">
+                  <option value="sunday">Sunday</option><option value="monday">Monday</option>
+                  <option value="tuesday">Tuesday</option><option value="wednesday">Wednesday</option>
+                  <option value="thursday">Thursday</option><option value="friday">Friday</option>
+                  <option value="saturday">Saturday</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Week Starts On</label>
+                <select id="s-week-start" onchange="markSettingsDirty()">
+                  <option value="sunday">Sunday</option><option value="monday">Monday</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="s-helper" style="margin-top:8px">Helps with attendance views and weekly summaries.</div>
+        </div>
+      </div>
+
+      <!-- ── TRACKING TAB ────────────────────────────────────── -->
+      <div class="settings-pane" id="settings-tracking">
+        <div class="settings-card">
+          <div class="scard-title">What This Ministry Tracks</div>
+          <div class="s-toggle-row">
+            <div class="s-toggle-info">
+              <div class="s-toggle-title">Hangout Notes</div>
+              <div class="s-toggle-desc">Leaders can write notes after services or hangouts.</div>
+            </div>
+            <div class="s-toggle" id="s-track-hangoutNotes" onclick="toggleSettingsSwitch('s-track-hangoutNotes')"><div class="s-toggle-knob"></div></div>
+          </div>
+          <div class="s-toggle-row">
+            <div class="s-toggle-info">
+              <div class="s-toggle-title">Tags / Labels</div>
+              <div class="s-toggle-desc">Add labels like 'new', 'needs follow-up', 'leader'.</div>
+            </div>
+            <div class="s-toggle" id="s-track-tags" onclick="toggleSettingsSwitch('s-track-tags')"><div class="s-toggle-knob"></div></div>
+          </div>
+          <div class="s-toggle-row">
+            <div class="s-toggle-info">
+              <div class="s-toggle-title">Birthdays</div>
+              <div class="s-toggle-desc">Show birthday on student cards and detail pages.</div>
+            </div>
+            <div class="s-toggle" id="s-track-birthdays" onclick="toggleSettingsSwitch('s-track-birthdays')"><div class="s-toggle-knob"></div></div>
+          </div>
+          <div class="s-toggle-row">
+            <div class="s-toggle-info">
+              <div class="s-toggle-title">Show Grade</div>
+              <div class="s-toggle-desc">Display grade badge on student cards.</div>
+            </div>
+            <div class="s-toggle" id="s-track-showGrade" onclick="toggleSettingsSwitch('s-track-showGrade')"><div class="s-toggle-knob"></div></div>
+          </div>
+          <div class="s-toggle-row">
+            <div class="s-toggle-info">
+              <div class="s-toggle-title">School</div>
+              <div class="s-toggle-desc">Show school name on student cards.</div>
+            </div>
+            <div class="s-toggle" id="s-track-school" onclick="toggleSettingsSwitch('s-track-school')"><div class="s-toggle-knob"></div></div>
+          </div>
+          <div class="s-toggle-row">
+            <div class="s-toggle-info">
+              <div class="s-toggle-title">Age</div>
+              <div class="s-toggle-desc">Calculate and show age from birthday.</div>
+            </div>
+            <div class="s-toggle" id="s-track-age" onclick="toggleSettingsSwitch('s-track-age')"><div class="s-toggle-knob"></div></div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="scard-title">Defaults</div>
+          <div class="scard-row">
+            <div class="field">
+              <label>Default Status for New Students</label>
+              <select id="s-default-status" onchange="markSettingsDirty()">
+                <option value="new">New</option>
+                <option value="regular">Regular</option>
+                <option value="unknown">Unknown</option>
+              </select>
+            </div>
+          </div>
+          <div class="s-toggle-row">
+            <div class="s-toggle-info">
+              <div class="s-toggle-title">Auto-Archive After Inactivity</div>
+              <div class="s-toggle-desc">Automatically archive students who haven't been seen.</div>
+            </div>
+            <div class="s-toggle" id="s-auto-archive" onclick="toggleSettingsSwitch('s-auto-archive')"><div class="s-toggle-knob"></div></div>
+          </div>
+          <div class="scard-row" id="s-archive-weeks-row" style="display:none">
+            <div class="field" style="max-width:200px">
+              <label>Archive After (weeks)</label>
+              <input type="number" id="s-archive-weeks" min="1" max="52" value="8" oninput="markSettingsDirty()">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── ACCESS TAB ──────────────────────────────────────── -->
+      <div class="settings-pane" id="settings-access">
+        <div class="settings-card">
+          <div class="scard-title">Who Can Use This</div>
+          <div class="scard-row">
+            <div class="s-radio-group" id="s-access-mode">
+              <label class="s-radio">
+                <input type="radio" name="access-mode" value="leaders-only" onchange="onAccessModeChange();markSettingsDirty()" checked>
+                <span class="s-radio-mark"></span>
+                <div>
+                  <div class="s-radio-title">Leaders Only (login required)</div>
+                  <div class="s-radio-desc">Users must sign in. Admins can manage access.</div>
+                </div>
+              </label>
+              <label class="s-radio">
+                <input type="radio" name="access-mode" value="shared-passcode" onchange="onAccessModeChange();markSettingsDirty()">
+                <span class="s-radio-mark"></span>
+                <div>
+                  <div class="s-radio-title">Shared Passcode (view-only)</div>
+                  <div class="s-radio-desc">Anyone with the passcode gets view-only access.</div>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div id="s-passcode-config" style="display:none">
+            <div class="scard-row">
+              <div class="field">
+                <label>Passcode</label>
+                <input type="password" id="s-passcode" placeholder="Enter passcode" oninput="markSettingsDirty()" autocomplete="off">
+                <button class="s-show-pass" onclick="togglePasscodeVisibility()" type="button">Show</button>
+              </div>
+            </div>
+            <div class="scard-row">
+              <div class="field">
+                <label>What Passcode Users Can See</label>
+                <div class="s-checkbox-group">
+                  <label class="s-checkbox"><input type="checkbox" id="s-perm-viewRoster" onchange="markSettingsDirty()" checked><span>View roster</span></label>
+                  <label class="s-checkbox"><input type="checkbox" id="s-perm-viewAttendance" onchange="markSettingsDirty()"><span>View attendance summaries</span></label>
+                  <label class="s-checkbox"><input type="checkbox" id="s-perm-viewNotes" onchange="markSettingsDirty()"><span>View notes</span></label>
+                  <label class="s-checkbox"><input type="checkbox" id="s-perm-viewPrayer" onchange="markSettingsDirty()"><span>View prayer requests</span></label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="s-leaders-only-info" style="display:none">
+            <div class="s-info-box">Users must sign in with their email and password. Admins can manage access from the Admin panel.</div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="scard-title">Simple Roles (MVP)</div>
+          <div class="s-helper" style="margin-bottom:12px">What each role can do. Not customizable yet.</div>
+          <table class="s-roles-table">
+            <thead><tr><th>Role</th><th>Roster</th><th>Attendance</th><th>Notes</th><th>Settings</th></tr></thead>
+            <tbody>
+              <tr><td><span class="role-badge admin">Admin</span></td><td>Edit</td><td>Edit</td><td>Edit</td><td>Edit</td></tr>
+              <tr><td><span class="role-badge leader">Leader</span></td><td>Edit</td><td>Edit</td><td>Edit</td><td>—</td></tr>
+              <tr><td><span class="role-badge pending">Viewer</span></td><td>View</td><td>View</td><td>—</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ── APPEARANCE TAB ──────────────────────────────────── -->
+      <div class="settings-pane" id="settings-appearance">
+        <div class="settings-card">
+          <div class="scard-title">Theme</div>
+          <div class="scard-row">
+            <div class="s-theme-selector">
+              <button class="s-theme-opt" data-theme="dark" onclick="selectSettingsTheme('dark')">
+                <div class="s-theme-preview s-theme-dark"></div>
+                <span>Dark</span>
+              </button>
+              <button class="s-theme-opt" data-theme="light" onclick="selectSettingsTheme('light')">
+                <div class="s-theme-preview s-theme-light"></div>
+                <span>Light</span>
+              </button>
+              <button class="s-theme-opt" data-theme="auto" onclick="selectSettingsTheme('auto')">
+                <div class="s-theme-preview s-theme-auto"></div>
+                <span>Auto (system)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-card">
+          <div class="scard-title">Mobile Layout</div>
+          <div class="s-toggle-row">
+            <div class="s-toggle-info">
+              <div class="s-toggle-title">Compact Mode</div>
+              <div class="s-toggle-desc">Tighter spacing for smaller screens.</div>
+            </div>
+            <div class="s-toggle" id="s-compact-mode" onclick="toggleSettingsSwitch('s-compact-mode')"><div class="s-toggle-knob"></div></div>
+          </div>
+          <div class="s-toggle-row">
+            <div class="s-toggle-info">
+              <div class="s-toggle-title">Sticky Bottom Tabs on Mobile</div>
+              <div class="s-toggle-desc">Keeps navigation visible at the bottom of the screen.</div>
+            </div>
+            <div class="s-toggle" id="s-sticky-tabs" onclick="toggleSettingsSwitch('s-sticky-tabs')"><div class="s-toggle-knob"></div></div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+  <div class="settings-footer">
+    <div class="settings-footer-inner">
+      <button class="btn-save" id="settings-save-btn" onclick="saveSettings()" disabled>Save Changes</button>
+      <button class="btn-secondary" id="settings-cancel-btn" onclick="cancelSettings()">Cancel</button>
+      <span class="settings-footer-note">Changes apply immediately after saving.</span>
+    </div>
+  </div>
+</div>
+
 <!-- ════ MODALS ═══════════════════════════════════════════════ -->
 
 <!-- AUTH -->
