@@ -901,4 +901,219 @@ input[type=file] { display: none; }
 
 /* ── FOOTER ────────────────────────────────────────────────── */
 footer { text-align: center; padding: 48px 0 32px; color: var(--muted); font-size: 11px; font-family: 'JetBrains Mono', monospace; letter-spacing: .1em; }
+
+/* ══════════════════════════════════════════════════════════════
+   SETTINGS PAGE
+   ══════════════════════════════════════════════════════════════ */
+.settings-topbar-info { flex: 1; text-align: center; }
+.settings-ministry-name { font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; letter-spacing: .1em; }
+
+/* ── Layout ───────────────────────────────────────────────── */
+.settings-layout { display: flex; max-width: 960px; margin: 0 auto; padding: 24px 20px 100px; gap: 28px; min-height: calc(100vh - 56px); }
+.settings-sidebar { display: flex; flex-direction: column; gap: 4px; width: 180px; flex-shrink: 0; position: sticky; top: 80px; align-self: flex-start; }
+.settings-content { flex: 1; min-width: 0; }
+
+/* ── Sidebar Tabs ─────────────────────────────────────────── */
+.settings-tab {
+  display: flex; align-items: center; gap: 10px; padding: 11px 16px;
+  border-radius: var(--radius-sm); border: none; cursor: pointer;
+  background: transparent; color: var(--muted); font-size: 13px;
+  font-family: 'Inter', sans-serif; font-weight: 500;
+  text-align: left; transition: all .2s var(--ease);
+}
+.settings-tab:hover { color: var(--text); background: var(--surface2); }
+.settings-tab.active { color: var(--accent); background: var(--accent-glow); border: 1px solid var(--accent-border); font-weight: 600; }
+.stab-icon { font-size: 16px; flex-shrink: 0; }
+.stab-label { white-space: nowrap; }
+
+/* ── Panes ────────────────────────────────────────────────── */
+.settings-pane { display: none; animation: fadeDown .3s var(--ease); }
+.settings-pane.active { display: block; }
+
+/* ── Cards ────────────────────────────────────────────────── */
+.settings-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 24px;
+  margin-bottom: 20px;
+}
+.scard-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 22px;
+  letter-spacing: .04em; color: var(--text); margin-bottom: 18px;
+}
+.scard-row { margin-bottom: 16px; }
+.scard-row:last-child { margin-bottom: 0; }
+
+/* ── Helper text ──────────────────────────────────────────── */
+.s-helper { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; line-height: 1.5; margin-bottom: 8px; }
+
+/* ── Toggle Switch ────────────────────────────────────────── */
+.s-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+.s-toggle-row:last-child { border-bottom: none; }
+.s-toggle-info { flex: 1; }
+.s-toggle-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.s-toggle-desc { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.s-toggle {
+  width: 44px; height: 24px; border-radius: 12px; cursor: pointer;
+  background: var(--surface3); border: 1px solid var(--border2);
+  position: relative; transition: all .2s var(--ease); flex-shrink: 0;
+}
+.s-toggle-knob {
+  position: absolute; top: 2px; left: 2px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--muted); transition: all .2s var(--ease);
+}
+.s-toggle.on { background: var(--accent); border-color: var(--accent); }
+.s-toggle.on .s-toggle-knob { left: 22px; background: #000; }
+
+/* ── Chips (multi-select) ─────────────────────────────────── */
+.s-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.s-chip {
+  padding: 6px 14px; border-radius: 30px; font-size: 13px;
+  font-family: 'Inter', sans-serif; font-weight: 500;
+  cursor: pointer; border: 1px solid var(--border2);
+  background: var(--surface2); color: var(--text2);
+  transition: all .2s var(--ease); user-select: none;
+}
+.s-chip:hover { border-color: var(--accent-border); color: var(--text); }
+.s-chip.selected { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+
+/* ── Grade Tab Config ─────────────────────────────────────── */
+.s-grade-tabs-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+.s-grade-tab-group {
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 14px;
+}
+.s-grade-tab-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--accent);
+  margin-bottom: 8px;
+}
+.s-grade-tab-name {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: var(--radius-sm); padding: 7px 10px; color: var(--text);
+  font-size: 13px; width: 100%; outline: none; margin-bottom: 10px;
+  font-family: 'Inter', sans-serif; transition: border-color .2s, box-shadow .2s;
+}
+.s-grade-tab-name:focus { border-color: var(--accent-border); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+/* ── Logo Upload ──────────────────────────────────────────── */
+.s-logo-upload { display: flex; align-items: center; gap: 16px; margin-top: 12px; padding: 14px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); }
+.s-logo-preview { width: 80px; height: 80px; border-radius: var(--radius-sm); background: var(--surface3); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; }
+.s-logo-preview img { width: 100%; height: 100%; object-fit: contain; }
+.s-logo-placeholder { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.s-logo-actions { display: flex; flex-direction: column; gap: 8px; }
+
+/* ── Radio Buttons ────────────────────────────────────────── */
+.s-radio-group { display: flex; flex-direction: column; gap: 10px; }
+.s-radio {
+  display: flex; align-items: flex-start; gap: 12px; padding: 14px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: var(--radius); cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.s-radio:hover { border-color: var(--accent-border); }
+.s-radio input[type=radio] { display: none; }
+.s-radio-mark {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--muted); flex-shrink: 0; margin-top: 2px;
+  position: relative; transition: all .2s;
+}
+.s-radio input:checked ~ .s-radio-mark { border-color: var(--accent); }
+.s-radio input:checked ~ .s-radio-mark::after {
+  content: ''; position: absolute; inset: 3px;
+  background: var(--accent); border-radius: 50%;
+}
+.s-radio-title { font-size: 14px; font-weight: 600; color: var(--text); }
+.s-radio-desc { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+/* ── Checkboxes ───────────────────────────────────────────── */
+.s-checkbox-group { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.s-checkbox {
+  display: flex; align-items: center; gap: 10px; cursor: pointer;
+  font-size: 13px; color: var(--text2); font-family: 'Inter', sans-serif;
+}
+.s-checkbox input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+
+/* ── Passcode field ───────────────────────────────────────── */
+.s-show-pass {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted); font-size: 11px;
+  cursor: pointer; font-family: 'JetBrains Mono', monospace;
+  transition: color .2s;
+}
+.s-show-pass:hover { color: var(--text); }
+#s-passcode-config .field { position: relative; }
+
+/* ── Info box ─────────────────────────────────────────────── */
+.s-info-box {
+  padding: 14px 16px; background: var(--accent-glow);
+  border: 1px solid var(--accent-border); border-radius: var(--radius);
+  font-size: 13px; color: var(--text2); line-height: 1.5;
+}
+
+/* ── Roles Table ──────────────────────────────────────────── */
+.s-roles-table { width: 100%; border-collapse: collapse; }
+.s-roles-table th {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+  padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border);
+}
+.s-roles-table td {
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+  font-size: 13px; color: var(--text2);
+}
+.s-roles-table tr:last-child td { border-bottom: none; }
+
+/* ── Theme Selector ───────────────────────────────────────── */
+.s-theme-selector { display: flex; gap: 14px; }
+.s-theme-opt {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 16px 12px; border-radius: var(--radius); cursor: pointer;
+  border: 2px solid var(--border2); background: var(--surface2);
+  color: var(--text2); font-size: 12px; font-weight: 500;
+  font-family: 'Inter', sans-serif; transition: all .2s var(--ease);
+}
+.s-theme-opt:hover { border-color: var(--accent-border); color: var(--text); }
+.s-theme-opt.active { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+.s-theme-preview {
+  width: 48px; height: 48px; border-radius: 10px; border: 1px solid var(--border2);
+}
+.s-theme-dark { background: linear-gradient(135deg, #0a0a0f 50%, #18181f 50%); }
+.s-theme-light { background: linear-gradient(135deg, #f5f5f7 50%, #ffffff 50%); }
+.s-theme-auto { background: linear-gradient(135deg, #0a0a0f 50%, #f5f5f7 50%); }
+
+/* ── Footer ───────────────────────────────────────────────── */
+.settings-footer {
+  position: sticky; bottom: 0; z-index: 10;
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding: 16px 20px;
+}
+.settings-footer-inner { max-width: 960px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+.settings-footer-note { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-left: auto; }
+
+/* ── Logo in nav/gate (dynamic branding) ──────────────────── */
+.nav-logo-img { height: 28px; width: auto; display: block; }
+.gate-logo-img { max-height: 120px; max-width: 280px; display: block; margin: 0 auto; }
+
+/* ── Responsive ───────────────────────────────────────────── */
+@media (max-width: 680px) {
+  .settings-layout { flex-direction: column; gap: 0; padding-top: 0; }
+  .settings-sidebar {
+    flex-direction: row; width: 100%; position: sticky; top: 56px; z-index: 5;
+    background: var(--bg); padding: 12px 0; gap: 6px; overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+  }
+  .settings-tab { padding: 8px 14px; font-size: 12px; white-space: nowrap; }
+  .stab-icon { display: none; }
+  .settings-content { padding-top: 16px; }
+  .settings-card { padding: 18px; }
+  .s-grade-tabs-wrap { grid-template-columns: 1fr; }
+  .s-theme-selector { flex-direction: row; }
+  .s-theme-opt { padding: 12px 8px; }
+  .settings-footer { padding: 12px 16px; }
+  .settings-footer-note { display: none; }
+}
 `;

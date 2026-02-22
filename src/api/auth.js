@@ -20,7 +20,15 @@ export async function handleAuth(request, env, pathname, method) {
 async function passcodeLogin(request, env) {
   let passcode = '';
   try { ({ passcode = '' } = await request.json()); } catch (_) {}
-  const correct = env.SITE_PASSWORD || '';
+
+  // Check KV settings first, then fall back to env secret
+  let correct = '';
+  const settings = await env.ASM_KV.get('settings:org', { type: 'json' });
+  if (settings?.access?.mode === 'shared-passcode' && settings.access.passcode) {
+    correct = settings.access.passcode;
+  } else {
+    correct = env.SITE_PASSWORD || '';
+  }
   if (!correct || !passcode) return jsonResp({ error: 'Invalid passcode' }, 401);
 
   // Timing-safe comparison
@@ -60,7 +68,13 @@ async function passcodeLogin(request, env) {
 
 async function checkPassword(request, env) {
   const { password } = await request.json();
-  const correct = env.SITE_PASSWORD || 'Give em Jesus';
+  let correct = '';
+  const settings = await env.ASM_KV.get('settings:org', { type: 'json' });
+  if (settings?.access?.mode === 'shared-passcode' && settings.access.passcode) {
+    correct = settings.access.passcode;
+  } else {
+    correct = env.SITE_PASSWORD || 'Give em Jesus';
+  }
   const a = new TextEncoder().encode(password.padEnd(128));
   const b = new TextEncoder().encode(correct.padEnd(128));
   let d = 0;

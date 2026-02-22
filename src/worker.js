@@ -3,8 +3,8 @@
  * Worship Grow Go · Anthem Students
  *
  * REQUIRED KV NAMESPACE BINDING:  ASM_KV
+ * REQUIRED R2 BUCKET BINDING:     ASM_R2
  * REQUIRED SECRETS:
- *   SITE_PASSWORD      (e.g. "Give em Jesus")
  *   ADMIN_EMAIL        (your email)
  *   GOOGLE_SCRIPT_URL  (Apps Script web app URL)
  *   MAILCHANNELS_FROM  (noreply@anthemstudents.org)
@@ -18,8 +18,9 @@ import { handleInteractions } from './api/interactions.js';
 import { handleActivity }     from './api/activity.js';
 import { handleBrainDump }    from './api/brainDump.js';
 import { handleUpload }       from './api/upload.js';
+import { handleSettings }     from './api/settings.js';
 import { getHTML }            from './html/index.js';
-import { MANIFEST }           from './html/manifest.js';
+import { buildManifest }       from './html/manifest.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -38,11 +39,22 @@ export default {
       });
     }
 
-    // ── PWA Manifest ────────────────────────────────────────
+    // ── PWA Manifest (dynamic from settings) ────────────────
     if (pathname === '/manifest.json') {
-      return new Response(MANIFEST, {
-        headers: { 'Content-Type': 'application/manifest+json', 'Cache-Control': 'public, max-age=86400' },
+      const settings = await env.ASM_KV.get('settings:org', { type: 'json' });
+      return new Response(buildManifest(settings), {
+        headers: { 'Content-Type': 'application/manifest+json', 'Cache-Control': 'public, max-age=3600' },
       });
+    }
+
+    // ── R2 object serving (photos, logos) ───────────────────
+    if (pathname.startsWith('/r2/') && method === 'GET') {
+      return serveR2(env, pathname);
+    }
+
+    // ── Settings endpoints ─────────────────────────────────
+    if (pathname.startsWith('/api/settings')) {
+      return handleSettings(request, env, pathname, method);
     }
 
     // ── Auth endpoints ───────────────────────────────────────
@@ -90,3 +102,24 @@ export default {
     });
   },
 };
+
+async function serveR2(env, pathname) {
+  if (!env.ASM_R2) {
+    return new Response('R2 not configured', { status: 500 });
+  }
+  const key = pathname.slice(4); // strip "/r2/"
+  if (!key || key.includes('..')) {
+    return new Response('Invalid path', { status: 400 });
+  }
+  const object = await env.ASM_R2.get(key);
+  if (!object) {
+    return new Response('Not found', { status: 404 });
+  }
+  return new Response(object.body, {
+    headers: {
+      'Content-Type': object.httpMetadata?.contentType || 'image/jpeg',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'ETag': object.etag,
+    },
+  });
+}
