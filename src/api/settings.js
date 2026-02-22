@@ -1,4 +1,4 @@
-import { jsonResp, getSessionUser } from './utils.js';
+import { jsonResp, requirePermission } from './utils.js';
 
 const SETTINGS_KEY = 'settings:org';
 
@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
   campus: '',
   logoUrl: '',
   logoEnabled: false,
+  logoTone: 'light',
   gradeTabs: {
     hs: { label: 'High School', grades: [9, 10, 11, 12] },
     ms: { label: 'Middle School', grades: [6, 7, 8] },
@@ -37,8 +38,22 @@ const DEFAULT_SETTINGS = {
     },
   },
   appearance: {
+    theme: 'auto',
     compactMode: false,
     stickyBottomTabs: true,
+  },
+  permissions: {
+    roles: ['pending', 'approved', 'leader', 'admin'],
+    levels: ['none', 'view', 'edit', 'admin'],
+    modules: {
+      roster: { pending: 'view', approved: 'edit', leader: 'edit', admin: 'admin' },
+      activity: { pending: 'view', approved: 'view', leader: 'edit', admin: 'admin' },
+      brainDump: { pending: 'none', approved: 'edit', leader: 'edit', admin: 'admin' },
+      attendance: { pending: 'view', approved: 'edit', leader: 'edit', admin: 'admin' },
+      hangoutNotes: { pending: 'none', approved: 'edit', leader: 'edit', admin: 'admin' },
+      adminland: { pending: 'none', approved: 'none', leader: 'none', admin: 'admin' },
+      dashboard: { pending: 'view', approved: 'view', leader: 'view', admin: 'admin' },
+    },
   },
 };
 
@@ -49,10 +64,8 @@ export async function handleSettings(request, env, pathname, method) {
   }
 
   // All other settings routes require admin
-  const user = await getSessionUser(env, request);
-  if (!user || user.role !== 'admin') {
-    return jsonResp({ error: 'Admin access required' }, 403);
-  }
+  const perm = await requirePermission(env, request, 'adminland', 'admin');
+  if (!perm.ok) return jsonResp({ error: 'Admin access required' }, 403);
 
   if (pathname === '/api/settings' && method === 'GET') return getSettings(env);
   if (pathname === '/api/settings' && method === 'POST') return saveSettings(request, env);
@@ -81,10 +94,12 @@ async function getPublicSettings(env) {
     ministryName: s.ministryName,
     campus: s.campus,
     logoUrl: s.logoEnabled && s.logoUrl ? s.logoUrl : '',
+    logoTone: s.logoTone || 'light',
     logoEnabled: s.logoEnabled,
     gradeTabs: s.gradeTabs,
     tracking: s.tracking,
     appearance: s.appearance,
+    permissions: s.permissions,
     accessMode: s.access?.mode || 'leaders-only',
   });
 }

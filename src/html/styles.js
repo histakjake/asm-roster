@@ -1117,3 +1117,8 @@ footer { text-align: center; padding: 48px 0 32px; color: var(--muted); font-siz
   .settings-footer-note { display: none; }
 }
 `;
+
+:root.logo-needs-invert .nav-logo-img,
+:root.logo-needs-invert .gate-logo-img { filter: invert(1) brightness(1.3); }
+:root.logo-needs-dark .nav-logo-img,
+:root.logo-needs-dark .gate-logo-img { filter: brightness(0.15); }
