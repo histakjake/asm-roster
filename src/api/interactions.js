@@ -1,4 +1,4 @@
-import { jsonResp, getSessionUser } from './utils.js';
+import { jsonResp, getSessionUser, requirePermission } from './utils.js';
 
 export async function handleInteractions(request, env, pathname, method) {
   if (pathname === '/api/student/interactions' && method === 'GET')    return getInteractions(request, env);
@@ -19,10 +19,9 @@ async function getInteractions(request, env) {
 }
 
 async function postInteraction(request, env) {
-  const user = await getSessionUser(env, request);
-  if (!user || !['approved', 'admin', 'leader'].includes(user.role)) {
-    return jsonResp({ error: 'Unauthorized' }, 403);
-  }
+  const perm = await requirePermission(env, request, 'hangoutNotes', 'edit');
+  if (!perm.ok) return perm.response;
+  const user = perm.user;
 
   const body = await request.json();
   const { sk, section, index, interaction, rowIndex, studentName } = body;
@@ -56,10 +55,9 @@ async function postInteraction(request, env) {
 }
 
 async function updateInteraction(request, env) {
-  const user = await getSessionUser(env, request);
-  if (!user || !['approved', 'admin', 'leader'].includes(user.role)) {
-    return jsonResp({ error: 'Unauthorized' }, 403);
-  }
+  const perm = await requirePermission(env, request, 'hangoutNotes', 'edit');
+  if (!perm.ok) return perm.response;
+  const user = perm.user;
 
   const body = await request.json();
   const { sk, section, index, interactionId, changes, rowIndex } = body;
@@ -95,10 +93,9 @@ async function updateInteraction(request, env) {
 }
 
 async function deleteInteraction(request, env) {
-  const user = await getSessionUser(env, request);
-  if (!user || !['approved', 'admin', 'leader'].includes(user.role)) {
-    return jsonResp({ error: 'Unauthorized' }, 403);
-  }
+  const perm = await requirePermission(env, request, 'hangoutNotes', 'edit');
+  if (!perm.ok) return perm.response;
+  const user = perm.user;
 
   const body = await request.json();
   const { sk, section, index, interactionId, rowIndex } = body;
