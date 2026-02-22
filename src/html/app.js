@@ -77,10 +77,22 @@ function initials(n) {
 }
 function driveThumb(url) {
   if (!url) return null;
-  // R2 URLs are served directly
-  if (url.startsWith('/r2/')) return url;
-  const m = url.match(/\\/d\\/([a-zA-Z0-9_-]+)/);
-  return m ? 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w200-h200-c' : null;
+  const raw = String(url).trim();
+
+  // R2 URLs and direct Google-hosted image URLs are served directly
+  if (raw.startsWith('/r2/')) return raw;
+  if (/^https?:\\/\\//.test(raw) && raw.includes('googleusercontent.com')) return raw;
+
+  const mPath = raw.match(/\\/d\\/([a-zA-Z0-9_-]+)/);
+  if (mPath) return 'https://drive.google.com/thumbnail?id=' + mPath[1] + '&sz=w200-h200-c';
+
+  try {
+    const u = new URL(raw);
+    const id = u.searchParams.get('id');
+    if (id) return 'https://drive.google.com/thumbnail?id=' + id + '&sz=w200-h200-c';
+  } catch (_) {}
+
+  return /^https?:\\/\\//.test(raw) ? raw : null;
 }
 function formatDate(val) {
   if (!val) return '';
@@ -1029,8 +1041,7 @@ async function applyDump(i) {
 // ── ADMIN ─────────────────────────────────────────────────────
 
 function openAdminland() {
-  // Unified admin entrypoint: open settings first, then admin panel remains available for user management metrics.
-  openSettings();
+  loadAdminPanel();
 }
 
 
