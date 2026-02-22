@@ -20,7 +20,7 @@ import { handleBrainDump }    from './api/brainDump.js';
 import { handleUpload }       from './api/upload.js';
 import { handleSettings }     from './api/settings.js';
 import { getHTML }            from './html/index.js';
-import { MANIFEST }           from './html/manifest.js';
+import { buildManifest }       from './html/manifest.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -39,10 +39,11 @@ export default {
       });
     }
 
-    // ── PWA Manifest ────────────────────────────────────────
+    // ── PWA Manifest (dynamic from settings) ────────────────
     if (pathname === '/manifest.json') {
-      return new Response(MANIFEST, {
-        headers: { 'Content-Type': 'application/manifest+json', 'Cache-Control': 'public, max-age=86400' },
+      const settings = await env.ASM_KV.get('settings:org', { type: 'json' });
+      return new Response(buildManifest(settings), {
+        headers: { 'Content-Type': 'application/manifest+json', 'Cache-Control': 'public, max-age=3600' },
       });
     }
 

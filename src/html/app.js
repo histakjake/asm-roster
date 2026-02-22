@@ -169,6 +169,12 @@ function showLanes() {
   if (lf) lf.style.display = 'none';
   if (pf) pf.style.display = 'none';
   if (la) la.style.display = 'flex';
+  // Hide passcode lane if access mode is leaders-only
+  const passcodeLane = document.getElementById('gate-lane-passcode');
+  if (passcodeLane) {
+    const mode = orgSettings?.accessMode || 'leaders-only';
+    passcodeLane.style.display = mode === 'shared-passcode' ? '' : 'none';
+  }
 }
 
 function showPasscodeForm() {
@@ -702,7 +708,7 @@ async function renderStudentDetail(sk, section, index) {
   const editBtn = canEdit
     ? '<button class="nav-btn primary edit-gated" onclick="openEditModal(\\''+sk+'\\',\\''+section+'\\','+index+')">Edit</button>'
     : '';
-  const logBtn = canEdit
+  const logBtn = canEdit && tr2.hangoutNotes !== false
     ? '<button class="nav-btn" onclick="openInteractionModal(\\''+sk+'\\',\\''+section+'\\','+index+',\\''+person.name+'\\')">+ Log Hangout</button>'
     : '';
 
@@ -732,22 +738,25 @@ async function renderStudentDetail(sk, section, index) {
         '<div class="panel-title">📝 Notes</div>'+
         '<div style="font-size:13px;color:var(--text2);line-height:1.6">'+(person.notes||'<span style="color:var(--muted)">No notes yet.</span>')+'</div>'+
       '</div>'+
-      '<div class="panel full">'+
-        '<div class="panel-title">🤝 Hangout Log <span id="int-count"></span></div>'+
-        '<div id="interactions-list"><div class="loader"><div class="loader-ring"></div></div></div>'+
-      '</div>'+
+      (tr2.hangoutNotes !== false ?
+        '<div class="panel full">'+
+          '<div class="panel-title">🤝 Hangout Log <span id="int-count"></span></div>'+
+          '<div id="interactions-list"><div class="loader"><div class="loader-ring"></div></div></div>'+
+        '</div>' : '')+
     '</div>';
 
   // Load goals
   const goals=person.goals||[];
   renderGoalsList(goals,sk,section,index);
 
-  // Load interactions
-  try {
-    const res=await fetch('/api/student/interactions?sk='+sk+'&section='+section+'&index='+index);
-    const d=await res.json();
-    renderInteractionsList(d.interactions||[], sk, section, index);
-  } catch(e) { document.getElementById('interactions-list').innerHTML='<div class="empty"><p>Could not load.</p></div>'; }
+  // Load interactions (only if hangout notes tracking is enabled)
+  if (tr2.hangoutNotes !== false) {
+    try {
+      const res=await fetch('/api/student/interactions?sk='+sk+'&section='+section+'&index='+index);
+      const d=await res.json();
+      renderInteractionsList(d.interactions||[], sk, section, index);
+    } catch(e) { document.getElementById('interactions-list').innerHTML='<div class="empty"><p>Could not load.</p></div>'; }
+  }
 }
 
 function renderGoalsList(goals,sk,section,index) {
@@ -1393,6 +1402,13 @@ function applyBranding() {
   if (subtitle) {
     const yr = new Date().getFullYear();
     subtitle.textContent = name + ' · ASM ' + yr;
+  }
+
+  // Update gate access mode visibility
+  const passcodeLane = document.getElementById('gate-lane-passcode');
+  if (passcodeLane) {
+    const mode = orgSettings.accessMode || 'leaders-only';
+    passcodeLane.style.display = mode === 'shared-passcode' ? '' : 'none';
   }
 
   // Apply appearance settings

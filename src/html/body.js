@@ -7,7 +7,7 @@ export const HTML_BODY = `
 
     <!-- Two-lane landing (default) -->
     <div class="gate-lanes" id="gate-lanes">
-      <div class="gate-lane">
+      <div class="gate-lane" id="gate-lane-passcode">
         <div class="lane-icon">👁</div>
         <div class="lane-title">Quick View</div>
         <div class="lane-desc">View-only access with passcode</div>

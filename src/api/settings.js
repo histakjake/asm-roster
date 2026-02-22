@@ -85,6 +85,7 @@ async function getPublicSettings(env) {
     gradeTabs: s.gradeTabs,
     tracking: s.tracking,
     appearance: s.appearance,
+    accessMode: s.access?.mode || 'leaders-only',
   });
 }
 
