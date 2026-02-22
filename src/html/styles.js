@@ -247,6 +247,8 @@ body {
   cursor: pointer; border: none; transition: transform .2s, box-shadow .2s;
 }
 .nav-avatar:hover { transform: scale(1.1); box-shadow: 0 4px 16px rgba(245,200,66,.4); }
+.nav-avatar.has-photo { padding: 0; background: transparent; border: 1px solid var(--accent-border); }
+.nav-avatar-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 .nav-hamburger {
   display: none; flex-direction: column; justify-content: center; align-items: center;
   gap: 5px; width: 36px; height: 36px; background: transparent; border: 1px solid var(--border2);

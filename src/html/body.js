@@ -295,6 +295,7 @@ export const HTML_BODY = `
       </div>
       <div class="nav-right">
         <button class="nav-btn" onclick="closeSettings()">← Back</button>
+        <button class="nav-btn" onclick="openAdminUsers()">Users</button>
         <button class="nav-btn primary" id="settings-save-topbar" onclick="saveSettings()" disabled>Save</button>
       </div>
     </div>
