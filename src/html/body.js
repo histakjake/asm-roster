@@ -258,7 +258,7 @@ export const HTML_BODY = `
 <div id="screen-admin" class="screen">
   <nav class="top-nav">
     <div class="nav-inner">
-      <div class="nav-logo">ASM <span>Admin</span></div>
+      <div class="nav-logo">ASM <span>Adminland</span></div>
       <div class="nav-right">
         <button class="nav-btn" onclick="showScreen('app')">← Back</button>
         <button class="nav-btn danger" onclick="logout()">Log Out</button>
@@ -266,7 +266,7 @@ export const HTML_BODY = `
     </div>
   </nav>
   <div class="container">
-    <div class="admin-title">Admin Panel</div>
+    <div class="admin-title">Adminland</div>
     <div class="admin-tabs">
       <button class="admin-tab active" onclick="switchAdminTab('overview',this)">Overview</button>
       <button class="admin-tab" onclick="switchAdminTab('users',this)">Users</button>

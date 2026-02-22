@@ -31,6 +31,68 @@ export async function getSessionUser(env, request) {
   return env.ASM_KV.get(`user:${sess.email}`, { type: 'json' });
 }
 
+export const PERMISSION_LEVELS = {
+  none: 0,
+  view: 1,
+  edit: 2,
+  admin: 3,
+};
+
+export const ROLE_DEFAULTS = {
+  pending: 'view',
+  approved: 'edit',
+  leader: 'edit',
+  admin: 'admin',
+  viewer: 'view',
+};
+
+const DEFAULT_MODULES = {
+  roster: { pending: 'view', approved: 'edit', leader: 'edit', admin: 'admin' },
+  activity: { pending: 'view', approved: 'view', leader: 'edit', admin: 'admin' },
+  brainDump: { pending: 'none', approved: 'edit', leader: 'edit', admin: 'admin' },
+  attendance: { pending: 'view', approved: 'edit', leader: 'edit', admin: 'admin' },
+  hangoutNotes: { pending: 'none', approved: 'edit', leader: 'edit', admin: 'admin' },
+  adminland: { pending: 'none', approved: 'none', leader: 'none', admin: 'admin' },
+  dashboard: { pending: 'view', approved: 'view', leader: 'view', admin: 'admin' },
+};
+
+export async function getPermissionMatrix(env) {
+  const settings = await env.ASM_KV.get('settings:org', { type: 'json' });
+  const matrix = settings?.permissions?.modules || {};
+  const merged = {};
+  for (const [module, defaults] of Object.entries(DEFAULT_MODULES)) {
+    merged[module] = { ...defaults, ...(matrix[module] || {}) };
+  }
+  return merged;
+}
+
+export async function hasPermission(env, user, module, level = 'view') {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  const matrix = await getPermissionMatrix(env);
+  const role = user.role || 'pending';
+  const userLevel = matrix[module]?.[role] || ROLE_DEFAULTS[role] || 'none';
+  return (PERMISSION_LEVELS[userLevel] || 0) >= (PERMISSION_LEVELS[level] || 0);
+}
+
+export async function requirePermission(env, request, module, level = 'view') {
+  const user = await getSessionUser(env, request);
+  if (!user) return { ok: false, response: jsonResp({ error: 'Not authenticated' }, 401) };
+  const ok = await hasPermission(env, user, module, level);
+  if (!ok) return { ok: false, response: jsonResp({ error: 'Forbidden' }, 403) };
+  return { ok: true, user };
+}
+
+export function validatePasswordStrength(password = '') {
+  return password.length >= 10 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password);
+}
+
+export function hashToken(token) {
+  return crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)).then(buf =>
+    [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('')
+  );
+}
+
 // ── Password hashing (PBKDF2) ────────────────────────────────
 export async function hashPassword(password) {
   const enc = new TextEncoder();

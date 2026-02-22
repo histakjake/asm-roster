@@ -1,4 +1,4 @@
-import { jsonResp, getSessionUser } from './utils.js';
+import { jsonResp, getSessionUser, requirePermission } from './utils.js';
 
 export async function handleActivity(request, env, pathname, method) {
   if (pathname === '/api/activity/recent' && method === 'GET') return recentActivity(request, env);
@@ -20,8 +20,8 @@ async function recentActivity(request, env) {
 }
 
 async function activityStats(request, env) {
-  const user = await getSessionUser(env, request);
-  if (!user || user.role !== 'admin') return jsonResp({ error: 'Unauthorized' }, 403);
+  const perm = await requirePermission(env, request, 'activity', 'view');
+  if (!perm.ok) return perm.response;
 
   const list = await env.ASM_KV.list({ prefix: 'activity:' });
   const leaderCounts = {};

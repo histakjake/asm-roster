@@ -24,7 +24,7 @@ export async function handleUpload(request, env) {
 
 async function uploadToR2(file, type, env) {
   const buffer = await file.arrayBuffer();
-  const ext = (file.type || 'image/jpeg').includes('png') ? 'png' : 'jpg';
+  const ext = (file.type || 'image/jpeg').includes('png') ? 'png' : ((file.type||'').includes('svg') ? 'svg' : 'jpg');
   const key = type === 'logo'
     ? `logo_${Date.now()}.${ext}`
     : `photos/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
@@ -33,7 +33,14 @@ async function uploadToR2(file, type, env) {
     httpMetadata: { contentType: file.type || 'image/jpeg' },
   });
 
-  return jsonResp({ url: `/r2/${key}` });
+  let logoTone = null;
+  if (type === 'logo' && !String(file.type || '').includes('svg')) {
+    const bytes = new Uint8Array(buffer).slice(0, 2048);
+    const avg = bytes.length ? bytes.reduce((a, b) => a + b, 0) / bytes.length : 128;
+    logoTone = avg < 127 ? 'dark' : 'light';
+  }
+
+  return jsonResp({ url: `/r2/${key}`, logoTone });
 }
 
 async function uploadToGoogleDrive(file, env) {

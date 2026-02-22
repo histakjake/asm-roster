@@ -1,8 +1,8 @@
-import { jsonResp, getSessionUser } from './utils.js';
+import { jsonResp, getSessionUser, requirePermission } from './utils.js';
 
 export async function handleBrainDump(request, env) {
-  const user = await getSessionUser(env, request);
-  if (!user) return jsonResp({ error: 'Not authenticated' }, 401);
+  const perm = await requirePermission(env, request, 'brainDump', 'edit');
+  if (!perm.ok) return perm.response;
 
   const { text, roster } = await request.json();
   if (!text) return jsonResp({ error: 'No text provided' }, 400);
