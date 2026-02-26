@@ -718,7 +718,7 @@ async function renderStudentDetail(sk, section, index) {
     (tr2.school!==false) && person.school  ? '🏫 '+person.school : '',
     (tr2.birthdays!==false) && person.birthday? '🎂 '+formatDate(person.birthday)+((tr2.age!==false)&&age?' · '+age+'yo':'') : '',
     person.interest? '⚡ '+person.interest : '',
-    sk==='hs' ? (person.connected?'✅ Connected':'○ Not Connected') : '',
+    sk==='hs' ? (person.connected?'✅ Family Connected With':'○ Needs Connection') : '',
   ].filter(Boolean).map(c=>'<div class="chip">'+c+'</div>').join('');
 
   const editBtn = canEdit
