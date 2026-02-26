@@ -1,4 +1,4 @@
-import { jsonResp, getSessionUser } from './utils.js';
+import { jsonResp, getSessionUser, requirePermission } from './utils.js';
 
 export async function handleSheet(request, env, pathname, method) {
   if (pathname === '/api/sheet/read' && method === 'GET') return sheetRead(request, env);
@@ -19,10 +19,8 @@ async function sheetRead(request, env) {
 }
 
 async function sheetWrite(request, env) {
-  const user = await getSessionUser(env, request);
-  if (!user || !['approved', 'admin', 'leader'].includes(user.role)) {
-    return jsonResp({ error: 'Must be logged in and approved to edit.' }, 403);
-  }
+  const perm = await requirePermission(env, request, 'roster', 'edit');
+  if (!perm.ok) return perm.response;
   if (!env.GOOGLE_SCRIPT_URL) return jsonResp({ error: 'GOOGLE_SCRIPT_URL not set' }, 500);
   try {
     const params = new URL(request.url).searchParams;

@@ -40,6 +40,7 @@ function applyTheme(pref) {
   document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
   const activeBtn = document.getElementById('theme-btn-' + pref);
   if (activeBtn) activeBtn.classList.add('active');
+  if (typeof applyBranding === 'function') applyBranding();
 }
 
 // ── SWIPE BACK ────────────────────────────────────────────────
@@ -76,10 +77,22 @@ function initials(n) {
 }
 function driveThumb(url) {
   if (!url) return null;
-  // R2 URLs are served directly
-  if (url.startsWith('/r2/')) return url;
-  const m = url.match(/\\/d\\/([a-zA-Z0-9_-]+)/);
-  return m ? 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w200-h200-c' : null;
+  const raw = String(url).trim();
+
+  // R2 URLs and direct Google-hosted image URLs are served directly
+  if (raw.startsWith('/r2/')) return raw;
+  if (/^https?:\\/\\//.test(raw) && raw.includes('googleusercontent.com')) return raw;
+
+  const mPath = raw.match(/\\/d\\/([a-zA-Z0-9_-]+)/);
+  if (mPath) return 'https://drive.google.com/thumbnail?id=' + mPath[1] + '&sz=w200-h200-c';
+
+  try {
+    const u = new URL(raw);
+    const id = u.searchParams.get('id');
+    if (id) return 'https://drive.google.com/thumbnail?id=' + id + '&sz=w200-h200-c';
+  } catch (_) {}
+
+  return /^https?:\\/\\//.test(raw) ? raw : null;
 }
 function formatDate(val) {
   if (!val) return '';
@@ -269,11 +282,14 @@ function updateNav() {
       return '<button class="nav-btn" onclick="openAuthModal(\\'signup\\')">Sign Up</button>' +
              '<button class="nav-btn primary" onclick="openAuthModal(\\'login\\')">Log In</button>';
     }
-    const settingsBtn = currentUser.role==='admin'
-      ? '<button class="nav-btn" onclick="openSettings()">Settings</button>' : '';
-    const adminBtn = currentUser.role==='admin'
-      ? '<button class="nav-btn" onclick="loadAdminPanel()">Admin</button>' : '';
-    return settingsBtn + adminBtn + '<button class="nav-avatar" onclick="openProfileModal()" title="'+currentUser.name+'">'+initials(currentUser.name)+'</button>';
+    const adminlandBtn = currentUser.role==='admin'
+      ? '<button class=\"nav-btn\" onclick=\"openAdminland()\">Adminland</button>' : '';
+    const thumb = driveThumb(currentUser.photoUrl);
+    const avatarInner = thumb
+      ? '<img class=\"nav-avatar-img\" src=\"'+thumb+'\" alt=\"'+(currentUser.name||'User')+'\" onerror=\"this.style.display=\'none\';this.parentElement.classList.remove(\'has-photo\')\">'
+      : initials(currentUser.name);
+    const photoClass = thumb ? ' has-photo' : '';
+    return adminlandBtn + '<button class=\"nav-avatar'+photoClass+'\" onclick=\"openProfileModal()\" title=\"'+currentUser.name+'\">'+avatarInner+'</button>';
   };
   ['nav-right','student-nav-right'].forEach(id => {
     const el = document.getElementById(id);
@@ -291,7 +307,7 @@ function updateNav() {
       let msg = 'View-only mode.';
       if (currentUser.expiresAt) {
         const t = new Date(currentUser.expiresAt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
-        msg = 'View-only · Session expires at '+t+'.';
+        msg = 'View-only mode.';
       }
       rb.querySelector('p').innerHTML=msg;
       rb.querySelector('button').style.display=''; rb.querySelector('button').textContent='Leader Login';
@@ -379,7 +395,7 @@ function makeCard(person, idx, sk, section) {
   ].filter(Boolean).map(t => '<div class="meta-item"><span>'+t+'</span></div>').join('');
 
   const connBadge = sk==='hs'
-    ? '<span class="badge-status '+(person.connected?'connected':'not-connected')+'">'+(person.connected?'● Connected':'○ Not Connected')+'</span>' : '';
+    ? '<span class="badge-status '+(person.connected?'connected':'not-connected')+'">'+(person.connected?'● Family Connected With':'○ Needs Connection')+'</span>' : '';
 
   const goals = person.goals||[];
   const done = goals.filter(g=>g.done).length;
@@ -572,7 +588,7 @@ function setConnected(val) {
   connectedVal=val;
   const el=document.getElementById('ef-connected-toggle');
   el.classList.toggle('on',val);
-  el.querySelector('.toggle-label').textContent=val?'Connected':'Not Connected';
+  el.querySelector('.toggle-label').textContent=val?'Family Connected With':'Needs Connection';
 }
 function toggleConnected() { setConnected(!connectedVal); }
 function updateEditPhotoPreview() {
@@ -1023,6 +1039,18 @@ async function applyDump(i) {
 }
 
 // ── ADMIN ─────────────────────────────────────────────────────
+
+function openAdminland() {
+  loadAdminPanel();
+}
+
+
+function openAdminUsers() {
+  showScreen('admin');
+  switchAdminTab('users', document.querySelector('.admin-tab[onclick*="users"]'));
+  loadAdminUsers();
+}
+
 async function loadAdminPanel() {
   showScreen('admin');
   await Promise.all([loadAdminOverview(),loadAdminUsers(),loadAdminMetrics()]);
@@ -1374,6 +1402,10 @@ function applyBranding() {
   if (!orgSettings) return;
   const name = orgSettings.ministryName || 'Anthem Students';
   const logo = orgSettings.logoUrl || '';
+  document.documentElement.classList.remove('logo-needs-invert','logo-needs-dark');
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+  if (currentTheme === 'dark' && orgSettings.logoTone === 'dark') document.documentElement.classList.add('logo-needs-invert');
+  if (currentTheme === 'light' && orgSettings.logoTone === 'light') document.documentElement.classList.add('logo-needs-dark');
 
   // Update gate screen
   const gateLogo = document.getElementById('gate-logo-area');
@@ -1645,6 +1677,7 @@ async function uploadSettingsLogo(input) {
     const data = await res.json();
     if (data.url) {
       const img = document.getElementById('s-logo-img');
+      if (settingsData) settingsData.logoTone = data.logoTone || settingsData.logoTone || 'light';
       if (img) { img.src = data.url; img.style.display = 'block'; img.previousElementSibling.style.display = 'none'; }
       if (settingsData) settingsData.logoUrl = data.url;
       markSettingsDirty();
@@ -1673,6 +1706,7 @@ async function saveSettings() {
     campus: v('s-campus'),
     logoEnabled: document.getElementById('s-logo-toggle')?.classList.contains('on') || false,
     logoUrl: settingsData.logoUrl || '',
+    logoTone: settingsData.logoTone || 'light',
     gradeTabs: {
       hs: {
         label: v('s-hs-label') || 'High School',
@@ -1709,6 +1743,7 @@ async function saveSettings() {
       },
     },
     appearance: {
+      theme: localStorage.getItem('asm-theme') || 'auto',
       compactMode: document.getElementById('s-compact-mode')?.classList.contains('on') || false,
       stickyBottomTabs: document.getElementById('s-sticky-tabs')?.classList.contains('on') || false,
     },

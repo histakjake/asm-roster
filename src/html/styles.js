@@ -247,6 +247,8 @@ body {
   cursor: pointer; border: none; transition: transform .2s, box-shadow .2s;
 }
 .nav-avatar:hover { transform: scale(1.1); box-shadow: 0 4px 16px rgba(245,200,66,.4); }
+.nav-avatar.has-photo { padding: 0; background: transparent; border: 1px solid var(--accent-border); }
+.nav-avatar-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
 .nav-hamburger {
   display: none; flex-direction: column; justify-content: center; align-items: center;
   gap: 5px; width: 36px; height: 36px; background: transparent; border: 1px solid var(--border2);
@@ -1117,3 +1119,8 @@ footer { text-align: center; padding: 48px 0 32px; color: var(--muted); font-siz
   .settings-footer-note { display: none; }
 }
 `;
+
+:root.logo-needs-invert .nav-logo-img,
+:root.logo-needs-invert .gate-logo-img { filter: invert(1) brightness(1.3); }
+:root.logo-needs-dark .nav-logo-img,
+:root.logo-needs-dark .gate-logo-img { filter: brightness(0.15); }

@@ -132,8 +132,8 @@ export const HTML_BODY = `
           </select>
           <select class="filter-select" id="filter-connected" onchange="applyFilters()">
             <option value="">All Status</option>
-            <option value="connected">Connected</option>
-            <option value="not-connected">Not Connected</option>
+            <option value="connected">Family Connected With</option>
+            <option value="not-connected">Needs Connection</option>
           </select>
           <select class="filter-select" id="filter-sort" onchange="applyFilters()">
             <option value="">Default Order</option>
@@ -258,7 +258,7 @@ export const HTML_BODY = `
 <div id="screen-admin" class="screen">
   <nav class="top-nav">
     <div class="nav-inner">
-      <div class="nav-logo">ASM <span>Admin</span></div>
+      <div class="nav-logo">ASM <span>Adminland</span></div>
       <div class="nav-right">
         <button class="nav-btn" onclick="showScreen('app')">← Back</button>
         <button class="nav-btn danger" onclick="logout()">Log Out</button>
@@ -266,7 +266,7 @@ export const HTML_BODY = `
     </div>
   </nav>
   <div class="container">
-    <div class="admin-title">Admin Panel</div>
+    <div class="admin-title">Adminland</div>
     <div class="admin-tabs">
       <button class="admin-tab active" onclick="switchAdminTab('overview',this)">Overview</button>
       <button class="admin-tab" onclick="switchAdminTab('users',this)">Users</button>
@@ -295,6 +295,7 @@ export const HTML_BODY = `
       </div>
       <div class="nav-right">
         <button class="nav-btn" onclick="closeSettings()">← Back</button>
+        <button class="nav-btn" onclick="openAdminUsers()">Users</button>
         <button class="nav-btn primary" id="settings-save-topbar" onclick="saveSettings()" disabled>Save</button>
       </div>
     </div>
@@ -660,7 +661,7 @@ export const HTML_BODY = `
       <label>Connection Status</label>
       <div class="connected-toggle" id="ef-connected-toggle" onclick="toggleConnected()">
         <div class="toggle-dot"></div>
-        <span class="toggle-label">Not Connected</span>
+        <span class="toggle-label">Needs Connection</span>
       </div>
     </div>
     <div class="modal-actions">
