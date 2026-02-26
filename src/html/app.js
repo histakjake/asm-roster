@@ -395,7 +395,7 @@ function makeCard(person, idx, sk, section) {
   ].filter(Boolean).map(t => '<div class="meta-item"><span>'+t+'</span></div>').join('');
 
   const connBadge = sk==='hs'
-    ? '<span class="badge-status '+(person.connected?'connected':'not-connected')+'">'+(person.connected?'● Connected':'○ Not Connected')+'</span>' : '';
+    ? '<span class="badge-status '+(person.connected?'connected':'not-connected')+'">'+(person.connected?'● Family Connected With':'○ Needs Connection')+'</span>' : '';
 
   const goals = person.goals||[];
   const done = goals.filter(g=>g.done).length;
@@ -588,7 +588,7 @@ function setConnected(val) {
   connectedVal=val;
   const el=document.getElementById('ef-connected-toggle');
   el.classList.toggle('on',val);
-  el.querySelector('.toggle-label').textContent=val?'Connected':'Not Connected';
+  el.querySelector('.toggle-label').textContent=val?'Family Connected With':'Needs Connection';
 }
 function toggleConnected() { setConnected(!connectedVal); }
 function updateEditPhotoPreview() {

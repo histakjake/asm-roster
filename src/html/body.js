@@ -132,8 +132,8 @@ export const HTML_BODY = `
           </select>
           <select class="filter-select" id="filter-connected" onchange="applyFilters()">
             <option value="">All Status</option>
-            <option value="connected">Connected</option>
-            <option value="not-connected">Not Connected</option>
+            <option value="connected">Family Connected With</option>
+            <option value="not-connected">Needs Connection</option>
           </select>
           <select class="filter-select" id="filter-sort" onchange="applyFilters()">
             <option value="">Default Order</option>
@@ -661,7 +661,7 @@ export const HTML_BODY = `
       <label>Connection Status</label>
       <div class="connected-toggle" id="ef-connected-toggle" onclick="toggleConnected()">
         <div class="toggle-dot"></div>
-        <span class="toggle-label">Not Connected</span>
+        <span class="toggle-label">Needs Connection</span>
       </div>
     </div>
     <div class="modal-actions">
