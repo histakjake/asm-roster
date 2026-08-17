@@ -286,7 +286,7 @@ function updateNav() {
       ? '<button class=\"nav-btn\" onclick=\"openAdminland()\">Adminland</button>' : '';
     const thumb = driveThumb(currentUser.photoUrl);
     const avatarInner = thumb
-      ? '<img class=\"nav-avatar-img\" src=\"'+thumb+'\" alt=\"'+(currentUser.name||'User')+'\" onerror=\"this.style.display=\'none\';this.parentElement.classList.remove(\'has-photo\')\">'
+      ? '<img class=\"nav-avatar-img\" src=\"'+thumb+'\" alt=\"'+(currentUser.name||'User')+'\" onerror=\"this.style.display=\\'none\\';this.parentElement.classList.remove(\\'has-photo\\')\">'
       : initials(currentUser.name);
     const photoClass = thumb ? ' has-photo' : '';
     return adminlandBtn + '<button class=\"nav-avatar'+photoClass+'\" onclick=\"openProfileModal()\" title=\"'+currentUser.name+'\">'+avatarInner+'</button>';
