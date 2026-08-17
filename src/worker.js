@@ -92,14 +92,18 @@ export default {
       return handleUpload(request, env);
     }
 
-    // ── Serve the app HTML ───────────────────────────────────
-    return new Response(getHTML(), {
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-cache',
-        'X-Content-Type-Options': 'nosniff',
-      },
-    });
+    // ── Serve the app HTML (only at /roster) ─────────────────
+    if (pathname === '/roster' || pathname === '/roster/') {
+      return new Response(getHTML(), {
+        headers: {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-cache',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      });
+    }
+
+    return new Response('Not found', { status: 404 });
   },
 };
 

@@ -15,7 +15,7 @@ export function buildManifest(settings) {
     name: `ASM ${year} · ${name}`,
     short_name: name.length > 12 ? 'ASM Roster' : name,
     description: `Worship Grow Go · ${name} Mentorship Roster`,
-    start_url: '/',
+    start_url: '/roster',
     display: 'standalone',
     background_color: '#0a0a0f',
     theme_color: '#0a0a0f',
